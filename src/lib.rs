@@ -1,7 +1,10 @@
 pub mod config;
 pub mod episode;
+pub mod exponential_retry;
 pub mod pgpool;
+pub mod pod_connection;
 pub mod podcast;
+pub mod row_index_trait;
 
 use failure::{err_msg, Error};
 

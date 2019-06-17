@@ -2,6 +2,7 @@ use failure::Error;
 
 use crate::map_result_vec;
 use crate::pgpool::PgPool;
+use crate::row_index_trait::RowIndexTrait;
 
 #[derive(Default, Clone, Debug)]
 pub struct Podcast {
@@ -38,13 +39,13 @@ impl Podcast {
             WHERE castid = $1
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid])?.iter().nth(0) {
-            let castid: i32 = row.get(0);
-            let castname: String = row.get(1);
-            let feedurl: String = row.get(2);
-            let pcenabled: i32 = row.get(3);
-            let lastupdate: Option<i32> = row.get(4);
-            let lastattempt: Option<i32> = row.get(5);
-            let failedattempts: i32 = row.get(6);
+            let castid: i32 = row.get_idx(0)?;
+            let castname: String = row.get_idx(1)?;
+            let feedurl: String = row.get_idx(2)?;
+            let pcenabled: i32 = row.get_idx(3)?;
+            let lastupdate: Option<i32> = row.get_idx(4)?;
+            let lastattempt: Option<i32> = row.get_idx(5)?;
+            let failedattempts: i32 = row.get_idx(6)?;
 
             let pod = Podcast {
                 castid,
@@ -73,13 +74,13 @@ impl Podcast {
             .iter()
             .nth(0)
         {
-            let castid: i32 = row.get(0);
-            let castname: String = row.get(1);
-            let feedurl: String = row.get(2);
-            let pcenabled: i32 = row.get(3);
-            let lastupdate: Option<i32> = row.get(4);
-            let lastattempt: Option<i32> = row.get(5);
-            let failedattempts: i32 = row.get(6);
+            let castid: i32 = row.get_idx(0)?;
+            let castname: String = row.get_idx(1)?;
+            let feedurl: String = row.get_idx(2)?;
+            let pcenabled: i32 = row.get_idx(3)?;
+            let lastupdate: Option<i32> = row.get_idx(4)?;
+            let lastattempt: Option<i32> = row.get_idx(5)?;
+            let failedattempts: i32 = row.get_idx(6)?;
 
             let pod = Podcast {
                 castid,
@@ -106,13 +107,13 @@ impl Podcast {
             .query(query, &[])?
             .iter()
             .map(|row| {
-                let castid: i32 = row.get(0);
-                let castname: String = row.get(1);
-                let feedurl: String = row.get(2);
-                let pcenabled: i32 = row.get(3);
-                let lastupdate: Option<i32> = row.get(4);
-                let lastattempt: Option<i32> = row.get(5);
-                let failedattempts: i32 = row.get(6);
+                let castid: i32 = row.get_idx(0)?;
+                let castname: String = row.get_idx(1)?;
+                let feedurl: String = row.get_idx(2)?;
+                let pcenabled: i32 = row.get_idx(3)?;
+                let lastupdate: Option<i32> = row.get_idx(4)?;
+                let lastattempt: Option<i32> = row.get_idx(5)?;
+                let failedattempts: i32 = row.get_idx(6)?;
 
                 let pod = Podcast {
                     castid,
