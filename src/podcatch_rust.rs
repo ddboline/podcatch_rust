@@ -60,17 +60,11 @@ fn main() -> Result<(), Error> {
                         directory,
                         epi.url_basename()?
                     );
-                    let new_epi = epi.download_episode(&pod_conn, directory)?;
-                    if let Some(epguid) = new_epi.epguid.as_ref() {
-                        let new_epi = if Episode::from_epguid(&pool, pod.castid, &epguid)?.is_some() {
-                            Episode {
-                                epguid: None,
-                                ..new_epi
-                            }
-                        } else {
-                            new_epi
-                        };
-                        new_epi.insert_episode(&pool)?;
+                    if Episode::from_epurl(&pool, pod.castid, &epi.epurl)?.is_none() {
+                        let new_epi = epi.download_episode(&pod_conn, directory)?;
+                        if new_epi.epguid.is_some() {
+                            new_epi.insert_episode(&pool)?;
+                        }
                     }
                 }
                 Ok(())
