@@ -1,6 +1,6 @@
 use failure::Error;
 
-use crate::map_result_vec;
+use crate::map_result;
 use crate::pgpool::PgPool;
 use crate::row_index_trait::RowIndexTrait;
 
@@ -13,10 +13,17 @@ pub struct Podcast {
     pub lastupdate: Option<i32>,
     pub lastattempt: Option<i32>,
     pub failedattempts: i32,
+    pub directory: Option<String>,
 }
 
 impl Podcast {
-    pub fn add_podcast(pool: &PgPool, cid: i32, cname: &str, furl: &str) -> Result<Podcast, Error> {
+    pub fn add_podcast(
+        pool: &PgPool,
+        cid: i32,
+        cname: &str,
+        furl: &str,
+        dir: &str,
+    ) -> Result<Podcast, Error> {
         let pod = if let Some(p) = Podcast::from_index(&pool, cid)? {
             p
         } else if let Some(p) = Podcast::from_feedurl(&pool, furl)? {
@@ -26,6 +33,7 @@ impl Podcast {
                 castid: cid,
                 castname: cname.to_string(),
                 feedurl: furl.to_string(),
+                directory: Some(dir.to_string()),
                 ..Default::default()
             }
         };
@@ -34,7 +42,9 @@ impl Podcast {
 
     pub fn from_index(pool: &PgPool, cid: i32) -> Result<Option<Podcast>, Error> {
         let query = r#"
-            SELECT castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts
+            SELECT
+                castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts,
+                directory
             FROM podcasts
             WHERE castid = $1
         "#;
@@ -46,6 +56,7 @@ impl Podcast {
             let lastupdate: Option<i32> = row.get_idx(4)?;
             let lastattempt: Option<i32> = row.get_idx(5)?;
             let failedattempts: i32 = row.get_idx(6)?;
+            let directory: Option<String> = row.get_idx(7)?;
 
             let pod = Podcast {
                 castid,
@@ -55,6 +66,7 @@ impl Podcast {
                 lastupdate,
                 lastattempt,
                 failedattempts,
+                directory,
             };
             Ok(Some(pod))
         } else {
@@ -64,7 +76,9 @@ impl Podcast {
 
     pub fn from_feedurl(pool: &PgPool, feedurl: &str) -> Result<Option<Podcast>, Error> {
         let query = r#"
-            SELECT castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts
+            SELECT
+                castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts,
+                directory
             FROM podcasts
             WHERE feedurl = $1
         "#;
@@ -81,6 +95,7 @@ impl Podcast {
             let lastupdate: Option<i32> = row.get_idx(4)?;
             let lastattempt: Option<i32> = row.get_idx(5)?;
             let failedattempts: i32 = row.get_idx(6)?;
+            let directory: Option<String> = row.get_idx(7)?;
 
             let pod = Podcast {
                 castid,
@@ -90,6 +105,7 @@ impl Podcast {
                 lastupdate,
                 lastattempt,
                 failedattempts,
+                directory,
             };
             Ok(Some(pod))
         } else {
@@ -99,7 +115,9 @@ impl Podcast {
 
     pub fn get_all_podcasts(pool: &PgPool) -> Result<Vec<Podcast>, Error> {
         let query = r#"
-            SELECT castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts
+            SELECT
+                castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts,
+                directory
             FROM podcasts
         "#;
         let results: Vec<Result<_, Error>> = pool
@@ -114,6 +132,7 @@ impl Podcast {
                 let lastupdate: Option<i32> = row.get_idx(4)?;
                 let lastattempt: Option<i32> = row.get_idx(5)?;
                 let failedattempts: i32 = row.get_idx(6)?;
+                let directory: Option<String> = row.get_idx(7)?;
 
                 let pod = Podcast {
                     castid,
@@ -123,13 +142,13 @@ impl Podcast {
                     lastupdate,
                     lastattempt,
                     failedattempts,
+                    directory,
                 };
                 Ok(pod)
             })
             .collect();
 
-        let podcasts = map_result_vec(results)?;
-        Ok(podcasts)
+        map_result(results)
     }
 }
 
