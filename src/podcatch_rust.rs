@@ -50,44 +50,65 @@ fn main() -> Result<(), Error> {
             update_episodes.len(),
         );
 
-        update_episodes
+        let results: Vec<_> = new_episodes
             .into_par_iter()
             .map(|epi| {
-                if let Ok(url) = epi.url_basename() {
-                    if let Some(epguid) = epi.epguid.as_ref() {
-                        if epguid.len() != 32 {
-                            if let Some(directory) = pod.directory.as_ref() {
-                                let fname = format!("{}/{}", directory, url);
-                                let path = Path::new(&fname);
-                                if path.exists() {
-                                    if let Ok(md5sum) = get_md5sum(&path) {
-                                        let mut p = epi.clone();
-                                        println!("{} {}", fname, md5sum);
-                                        p.epguid = Some(md5sum);
-                                        p.update_episode(&pool).unwrap();
-                                    }
-                                } else {
-                                    if let Ok(url_) = epi.epurl.parse::<Url>() {
-                                        println!("download {:?} {}", url_, fname);
-                                        // pod_conn.dump_to_file(&url_, &fname).unwrap();
-                                        // let path = Path::new(&fname);
-                                        // if path.exists() {
-                                        //     if let Ok(md5sum) = get_md5sum(&path) {
-                                        //         let mut p = epi.clone();
-                                        //         println!("{} {}", fname, md5sum);
-                                        //         p.epguid = Some(md5sum);
-                                        //         p.update_episode(&pool).unwrap();
-                                        //     }
-                                        // }
-                                    }
-                                }
+                if let Some(directory) = pod.directory.as_ref() {
+                    println!(
+                        "new download {} {} {}",
+                        epi.epurl,
+                        directory,
+                        epi.url_basename()?
+                    );
+                    let new_epi = epi.download_episode(&pod_conn, directory)?;
+                    if let Some(epguid) = new_epi.epguid.as_ref() {
+                        let new_epi = if Episode::from_epguid(&pool, pod.castid, &epguid)?.is_some() {
+                            Episode {
+                                epguid: None,
+                                ..new_epi
+                            }
+                        } else {
+                            new_epi
+                        };
+                        new_epi.insert_episode(&pool)?;
+                    }
+                }
+                Ok(())
+            })
+            .collect();
+
+        let _: Vec<_> = map_result(results)?;
+
+        let results: Vec<_> = update_episodes
+            .into_par_iter()
+            .map(|epi| {
+                let url = epi.url_basename()?;
+                let epguid = epi.epguid.as_ref().ok_or_else(|| err_msg("no md5sum"))?;
+                if epguid.len() != 32 {
+                    if let Some(directory) = pod.directory.as_ref() {
+                        let fname = format!("{}/{}", directory, url);
+                        let path = Path::new(&fname);
+                        if path.exists() {
+                            if let Ok(md5sum) = get_md5sum(&path) {
+                                let mut p = epi.clone();
+                                println!("{} {}", fname, md5sum);
+                                p.epguid = Some(md5sum);
+                                p.update_episode(&pool).unwrap();
+                            }
+                        } else {
+                            if let Ok(url_) = epi.epurl.parse::<Url>() {
+                                println!("download {:?} {}", url_, fname);
+                                let new_epi = epi.download_episode(&pod_conn, directory)?;
+                                new_epi.update_episode(&pool)?;
                             }
                         }
                     }
                 }
                 // epi.update_episode(&pool)?;
+                Ok(())
             })
-            .for_each(drop);
+            .collect();
+        let _: Vec<_> = map_result(results)?;
     }
     Ok(())
 }

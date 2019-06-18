@@ -1,11 +1,14 @@
 use failure::{err_msg, Error};
 use std::fmt;
+use std::fs::remove_file;
+use std::path::Path;
 use std::str::FromStr;
 use url::Url;
 
-use crate::map_result;
 use crate::pgpool::PgPool;
+use crate::pod_connection::PodConnection;
 use crate::row_index_trait::RowIndexTrait;
+use crate::{get_md5sum, map_result};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EpisodeStatus {
@@ -65,8 +68,18 @@ pub struct Episode {
 impl Episode {
     pub fn url_basename(&self) -> Result<String, Error> {
         if self.epurl.ends_with("media.mp3") {
-            println!("{}", self.title);
-            Ok(self.epurl.clone())
+            let basename: String = self
+                .title
+                .to_lowercase()
+                .chars()
+                .filter_map(|c| match c {
+                    'a'...'z' => Some(c),
+                    '0'...'9' => Some(c),
+                    ' ' => Some('_'),
+                    _ => None,
+                })
+                .collect();
+            Ok(format!("{}.mp3", basename))
         } else {
             let epurl: Url = self.epurl.parse()?;
             epurl
@@ -127,6 +140,46 @@ impl Episode {
             WHERE castid = $1 AND epurl = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &epurl])?.iter().nth(0) {
+            let castid: i32 = row.get_idx(0)?;
+            let episodeid: i32 = row.get_idx(1)?;
+            let title: String = row.get_idx(2)?;
+            let epurl: String = row.get_idx(3)?;
+            let enctype: String = row.get_idx(4)?;
+            let status: String = row.get_idx(5)?;
+            let eplength: i32 = row.get_idx(6)?;
+            let epfirstattempt: Option<i32> = row.get_idx(7)?;
+            let eplastattempt: Option<i32> = row.get_idx(8)?;
+            let epfailedattempts: i32 = row.get_idx(9)?;
+            let epguid: Option<String> = row.get_idx(10)?;
+
+            let ep = Episode {
+                castid,
+                episodeid,
+                title,
+                epurl,
+                enctype,
+                status: status.parse()?,
+                eplength,
+                epfirstattempt,
+                eplastattempt,
+                epfailedattempts,
+                epguid,
+            };
+            Ok(Some(ep))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Episode>, Error> {
+        let query = r#"
+            SELECT
+                castid, episodeid, title, epurl, enctype, status, eplength, epfirstattempt,
+                eplastattempt, epfailedattempts, epguid
+            FROM episodes
+            WHERE castid = $1 AND epguid = $2
+        "#;
+        if let Some(row) = pool.get()?.query(query, &[&cid, &epguid])?.iter().nth(0) {
             let castid: i32 = row.get_idx(0)?;
             let episodeid: i32 = row.get_idx(1)?;
             let title: String = row.get_idx(2)?;
@@ -267,6 +320,35 @@ impl Episode {
             .nth(0)
             .ok_or_else(|| err_msg("No episodes"))
             .and_then(|row| row.get_idx(0))
+    }
+
+    pub fn download_episode(
+        &self,
+        conn: &PodConnection,
+        directory: &str,
+    ) -> Result<Episode, Error> {
+        if !Path::new(directory).exists() {
+            Err(err_msg(format!("No such directory {}", directory)))
+        } else if let Ok(url) = self.epurl.parse() {
+            let outfile = format!("{}/{}", directory, self.url_basename()?);
+            if Path::new(&outfile).exists() {
+                remove_file(&outfile)?;
+            }
+            conn.dump_to_file(&url, &outfile)?;
+            let path = Path::new(&outfile);
+            if path.exists() {
+                let md5sum = get_md5sum(&path)?;
+                let mut p = self.clone();
+                println!("{} {}", outfile, md5sum);
+                p.epguid = Some(md5sum);
+                p.status = EpisodeStatus::Downloaded;
+                Ok(p)
+            } else {
+                Err(err_msg("Download failed"))
+            }
+        } else {
+            Err(err_msg(format!("Unkown failure {:?}", self)))
+        }
     }
 }
 

@@ -99,7 +99,6 @@ impl PodConnection {
                         &filter_urls,
                         latest_epid,
                     ) {
-                        println!("{:?}", epi);
                         episodes.push(epi);
                     }
                     title = None;
@@ -204,7 +203,6 @@ mod tests {
         let conn = PodConnection::new();
         let new_episodes = conn.parse_feed(&pod, &current_urls, max_epid + 1).unwrap();
         assert!(new_episodes.len() > 0);
-        assert!(false);
     }
 
     #[test]
