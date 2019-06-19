@@ -1,7 +1,10 @@
 use failure::Error;
+use std::collections::HashMap;
+use url::Url;
 
 use crate::map_result;
 use crate::pgpool::PgPool;
+use crate::pod_connection::PodConnection;
 use crate::row_index_trait::RowIndexTrait;
 
 #[derive(Default, Clone, Debug)]
@@ -17,21 +20,32 @@ impl Podcast {
         pool: &PgPool,
         cid: i32,
         cname: &str,
-        furl: &str,
+        furl: &Url,
         dir: &str,
     ) -> Result<Podcast, Error> {
         let pod = if let Some(p) = Podcast::from_index(&pool, cid)? {
             p
-        } else if let Some(p) = Podcast::from_feedurl(&pool, furl)? {
+        } else if let Some(p) = Podcast::from_feedurl(&pool, furl.as_str())? {
             p
         } else {
-            Podcast {
+            let pod = Podcast {
                 castid: cid,
                 castname: cname.to_string(),
                 feedurl: furl.to_string(),
                 directory: Some(dir.to_string()),
                 ..Default::default()
-            }
+            };
+            let episodes = PodConnection::new().parse_feed(&pod, &HashMap::new(), 0)?;
+            assert!(episodes.len() > 0);
+            let query = r#"
+                INSERT INTO podcasts (castid, castname, feedurl, directory)
+                VALUES ($1,$2,$3,$4)
+            "#;
+            pool.get()?.execute(
+                query,
+                &[&pod.castid, &pod.castname, &pod.feedurl, &pod.directory],
+            )?;
+            pod
         };
         Ok(pod)
     }
@@ -118,6 +132,14 @@ impl Podcast {
             .collect();
 
         map_result(results)
+    }
+
+    pub fn get_max_castid(pool: &PgPool) -> Result<i32, Error> {
+        let query = "SELECT MAX(castid) FROM podcasts";
+        match pool.get()?.query(query, &[])?.iter().nth(0) {
+            Some(row) => row.get_idx(0),
+            None => Ok(0),
+        }
     }
 }
 

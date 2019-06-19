@@ -16,7 +16,7 @@ rand = "0.6"
 roxmltree = "0.6"
 checksums = "0.5"
 rayon = "1.1"
-
+structopt = "0.2"
 
 [[bin]]
 name = "podcatch-rust"
