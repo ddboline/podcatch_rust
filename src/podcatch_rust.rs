@@ -60,10 +60,16 @@ fn main() -> Result<(), Error> {
                         directory,
                         epi.url_basename()?
                     );
-                    if Episode::from_epurl(&pool, pod.castid, &epi.epurl)?.is_none() {
+                    if let Some(mut new_epi) = Episode::from_epurl(&pool, pod.castid, &epi.epurl)? {
+                        println!("new title {}", epi.title);
+                        new_epi.title = epi.title.clone();
+                        new_epi.update_episode(&pool)?;
+                    } else {
                         let new_epi = epi.download_episode(&pod_conn, directory)?;
                         if new_epi.epguid.is_some() {
                             new_epi.insert_episode(&pool)?;
+                        } else {
+                            println!("No md5sum? {:?}", new_epi);
                         }
                     }
                 }
@@ -85,7 +91,7 @@ fn main() -> Result<(), Error> {
                         if path.exists() {
                             if let Ok(md5sum) = get_md5sum(&path) {
                                 let mut p = epi.clone();
-                                println!("{} {}", fname, md5sum);
+                                println!("update md5sum {} {}", fname, md5sum);
                                 p.epguid = Some(md5sum);
                                 p.update_episode(&pool).unwrap();
                             }
@@ -97,8 +103,9 @@ fn main() -> Result<(), Error> {
                             }
                         }
                     }
+                } else {
+                    println!("{:?}", epi);
                 }
-                // epi.update_episode(&pool)?;
                 Ok(())
             })
             .collect();

@@ -80,6 +80,16 @@ impl Episode {
                 })
                 .collect();
             Ok(format!("{}.mp3", basename))
+        } else if self.epurl.contains("newrustacean/") {
+            let basename: Vec<_> = self
+                .epurl
+                .split("newrustacean/")
+                .last()
+                .ok_or_else(|| err_msg("..."))?
+                .split('/')
+                .collect();
+            let basename: String = basename.join("_");
+            Ok(basename)
         } else {
             let epurl: Url = self.epurl.parse()?;
             epurl
