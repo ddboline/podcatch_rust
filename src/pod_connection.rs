@@ -54,6 +54,9 @@ impl PodConnection {
                 if let Ok(url) = ep.url_basename() {
                     if let Some(epi) = filter_urls.get(&url) {
                         if let Some(title_) = title {
+                            if title_ == "Wedgie diplomacy: Bugle 4083" {
+                                return None;
+                            }
                             if &epi.title != title_ {
                                 let mut p = epi.clone();
                                 p.title = title_.clone();
