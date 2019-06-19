@@ -1,0 +1,14 @@
+FROM lambci/lambda:build-provided
+MAINTAINER Daniel Boline
+
+RUN yum install -y gcc g++ zip && \
+    curl https://sh.rustup.rs > rustup.sh && \
+    sh rustup.sh -y && \
+    . ~/.cargo/env
+
+WORKDIR /podcatch_rust
+
+ADD Cargo.toml /podcatch_rust
+ADD src /podcatch_rust/src
+ADD scripts /podcatch_rust/scripts
+ADD Makefile /podcatch_rust

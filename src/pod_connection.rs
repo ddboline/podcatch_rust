@@ -26,7 +26,6 @@ impl PodConnection {
         podcast: &Podcast,
         title: &Option<String>,
         epurl: &Option<String>,
-        eplength: &Option<i32>,
         enctype: &Option<String>,
         filter_urls: &HashMap<String, Episode>,
         latest_epid: i32,
@@ -37,7 +36,6 @@ impl PodConnection {
                 castid: podcast.castid,
                 episodeid: latest_epid,
                 epurl: epurl.clone(),
-                eplength: eplength.unwrap_or(-1),
                 enctype: enctype.clone().unwrap_or_else(|| "".to_string()),
                 ..Default::default()
             };
@@ -87,7 +85,6 @@ impl PodConnection {
         let mut episodes = Vec::new();
         let mut title: Option<String> = None;
         let mut epurl: Option<String> = None;
-        let mut eplength: Option<i32> = None;
         let mut enctype: Option<String> = None;
 
         for d in doc.root().descendants() {
@@ -97,7 +94,6 @@ impl PodConnection {
                         &podcast,
                         &title,
                         &epurl,
-                        &eplength,
                         &enctype,
                         &filter_urls,
                         latest_epid,
@@ -106,7 +102,6 @@ impl PodConnection {
                     }
                     title = None;
                     epurl = None;
-                    eplength = None;
                     enctype = None;
                     latest_epid += 1;
                 }
@@ -117,7 +112,6 @@ impl PodConnection {
             for a in d.attributes() {
                 match a.name() {
                     "url" => epurl = Some(a.value().to_string()),
-                    "length" => eplength = Some(a.value().parse()?),
                     "type" => enctype = Some(a.value().to_string()),
                     _ => (),
                 }
@@ -128,7 +122,6 @@ impl PodConnection {
             &podcast,
             &title,
             &epurl,
-            &eplength,
             &enctype,
             &filter_urls,
             latest_epid,

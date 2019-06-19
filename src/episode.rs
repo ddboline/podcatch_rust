@@ -58,10 +58,6 @@ pub struct Episode {
     pub epurl: String,
     pub enctype: String,
     pub status: EpisodeStatus,
-    pub eplength: i32,
-    pub epfirstattempt: Option<i32>,
-    pub eplastattempt: Option<i32>,
-    pub epfailedattempts: i32,
     pub epguid: Option<String>,
 }
 
@@ -104,8 +100,7 @@ impl Episode {
     pub fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Episode>, Error> {
         let query = r#"
             SELECT
-                castid, episodeid, title, epurl, enctype, status, eplength, epfirstattempt,
-                eplastattempt, epfailedattempts, epguid
+                castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND episodeid = $2
         "#;
@@ -116,11 +111,7 @@ impl Episode {
             let epurl: String = row.get_idx(3)?;
             let enctype: String = row.get_idx(4)?;
             let status: String = row.get_idx(5)?;
-            let eplength: i32 = row.get_idx(6)?;
-            let epfirstattempt: Option<i32> = row.get_idx(7)?;
-            let eplastattempt: Option<i32> = row.get_idx(8)?;
-            let epfailedattempts: i32 = row.get_idx(9)?;
-            let epguid: Option<String> = row.get_idx(10)?;
+            let epguid: Option<String> = row.get_idx(6)?;
 
             let ep = Episode {
                 castid,
@@ -129,10 +120,6 @@ impl Episode {
                 epurl,
                 enctype,
                 status: status.parse()?,
-                eplength,
-                epfirstattempt,
-                eplastattempt,
-                epfailedattempts,
                 epguid,
             };
             Ok(Some(ep))
@@ -144,8 +131,7 @@ impl Episode {
     pub fn from_epurl(pool: &PgPool, cid: i32, epurl: &str) -> Result<Option<Episode>, Error> {
         let query = r#"
             SELECT
-                castid, episodeid, title, epurl, enctype, status, eplength, epfirstattempt,
-                eplastattempt, epfailedattempts, epguid
+                castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND epurl = $2
         "#;
@@ -156,11 +142,7 @@ impl Episode {
             let epurl: String = row.get_idx(3)?;
             let enctype: String = row.get_idx(4)?;
             let status: String = row.get_idx(5)?;
-            let eplength: i32 = row.get_idx(6)?;
-            let epfirstattempt: Option<i32> = row.get_idx(7)?;
-            let eplastattempt: Option<i32> = row.get_idx(8)?;
-            let epfailedattempts: i32 = row.get_idx(9)?;
-            let epguid: Option<String> = row.get_idx(10)?;
+            let epguid: Option<String> = row.get_idx(6)?;
 
             let ep = Episode {
                 castid,
@@ -169,10 +151,6 @@ impl Episode {
                 epurl,
                 enctype,
                 status: status.parse()?,
-                eplength,
-                epfirstattempt,
-                eplastattempt,
-                epfailedattempts,
                 epguid,
             };
             Ok(Some(ep))
@@ -184,8 +162,7 @@ impl Episode {
     pub fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Episode>, Error> {
         let query = r#"
             SELECT
-                castid, episodeid, title, epurl, enctype, status, eplength, epfirstattempt,
-                eplastattempt, epfailedattempts, epguid
+                castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND epguid = $2
         "#;
@@ -196,11 +173,7 @@ impl Episode {
             let epurl: String = row.get_idx(3)?;
             let enctype: String = row.get_idx(4)?;
             let status: String = row.get_idx(5)?;
-            let eplength: i32 = row.get_idx(6)?;
-            let epfirstattempt: Option<i32> = row.get_idx(7)?;
-            let eplastattempt: Option<i32> = row.get_idx(8)?;
-            let epfailedattempts: i32 = row.get_idx(9)?;
-            let epguid: Option<String> = row.get_idx(10)?;
+            let epguid: Option<String> = row.get_idx(6)?;
 
             let ep = Episode {
                 castid,
@@ -209,10 +182,6 @@ impl Episode {
                 epurl,
                 enctype,
                 status: status.parse()?,
-                eplength,
-                epfirstattempt,
-                eplastattempt,
-                epfailedattempts,
                 epguid,
             };
             Ok(Some(ep))
@@ -224,8 +193,7 @@ impl Episode {
     pub fn get_all_episodes(pool: &PgPool, cid: i32) -> Result<Vec<Episode>, Error> {
         let query = r#"
             SELECT
-                castid, episodeid, title, epurl, enctype, status, eplength, epfirstattempt,
-                eplastattempt, epfailedattempts, epguid
+                castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1
         "#;
@@ -240,11 +208,7 @@ impl Episode {
                 let epurl: String = row.get_idx(3)?;
                 let enctype: String = row.get_idx(4)?;
                 let status: String = row.get_idx(5)?;
-                let eplength: i32 = row.get_idx(6)?;
-                let epfirstattempt: Option<i32> = row.get_idx(7)?;
-                let eplastattempt: Option<i32> = row.get_idx(8)?;
-                let epfailedattempts: i32 = row.get_idx(9)?;
-                let epguid: Option<String> = row.get_idx(10)?;
+                let epguid: Option<String> = row.get_idx(6)?;
 
                 let ep = Episode {
                     castid,
@@ -253,10 +217,6 @@ impl Episode {
                     epurl,
                     enctype,
                     status: status.parse()?,
-                    eplength,
-                    epfirstattempt,
-                    eplastattempt,
-                    epfailedattempts,
                     epguid,
                 };
                 Ok(ep)
@@ -269,10 +229,9 @@ impl Episode {
     pub fn insert_episode(&self, pool: &PgPool) -> Result<u64, Error> {
         let query = r#"
             INSERT INTO episodes (
-                castid, episodeid, title, epurl, enctype, status, eplength, epfirstattempt,
-                eplastattempt, epfailedattempts, epguid
+                castid, episodeid, title, epurl, enctype, status, epguid
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                $1, $2, $3, $4, $5, $6, $7
             )
         "#;
         pool.get()?
@@ -285,10 +244,6 @@ impl Episode {
                     &self.epurl,
                     &self.enctype,
                     &self.status.to_string(),
-                    &self.eplength,
-                    &self.epfirstattempt,
-                    &self.eplastattempt,
-                    &self.epfailedattempts,
                     &self.epguid,
                 ],
             )
@@ -298,8 +253,7 @@ impl Episode {
     pub fn update_episode(&self, pool: &PgPool) -> Result<u64, Error> {
         let query = r#"
             UPDATE episodes
-            SET title=$3,epurl=$4,enctype=$5,status=$6,eplength=$7,epfirstattempt=$8,
-                eplastattempt=$9,epfailedattempts=$10,epguid=$11
+            SET title=$3,epurl=$4,enctype=$5,status=$6,epguid=$7
             WHERE castid=$1 AND episodeid=$2
         "#;
         pool.get()?
@@ -312,10 +266,6 @@ impl Episode {
                     &self.epurl,
                     &self.enctype,
                     &self.status.to_string(),
-                    &self.eplength,
-                    &self.epfirstattempt,
-                    &self.eplastattempt,
-                    &self.epfailedattempts,
                     &self.epguid,
                 ],
             )

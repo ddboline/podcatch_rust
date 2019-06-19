@@ -9,10 +9,6 @@ pub struct Podcast {
     pub castid: i32,
     pub castname: String,
     pub feedurl: String,
-    pub pcenabled: i32,
-    pub lastupdate: Option<i32>,
-    pub lastattempt: Option<i32>,
-    pub failedattempts: i32,
     pub directory: Option<String>,
 }
 
@@ -43,8 +39,7 @@ impl Podcast {
     pub fn from_index(pool: &PgPool, cid: i32) -> Result<Option<Podcast>, Error> {
         let query = r#"
             SELECT
-                castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts,
-                directory
+                castid, castname, feedurl, directory
             FROM podcasts
             WHERE castid = $1
         "#;
@@ -52,20 +47,12 @@ impl Podcast {
             let castid: i32 = row.get_idx(0)?;
             let castname: String = row.get_idx(1)?;
             let feedurl: String = row.get_idx(2)?;
-            let pcenabled: i32 = row.get_idx(3)?;
-            let lastupdate: Option<i32> = row.get_idx(4)?;
-            let lastattempt: Option<i32> = row.get_idx(5)?;
-            let failedattempts: i32 = row.get_idx(6)?;
-            let directory: Option<String> = row.get_idx(7)?;
+            let directory: Option<String> = row.get_idx(3)?;
 
             let pod = Podcast {
                 castid,
                 castname,
                 feedurl,
-                pcenabled,
-                lastupdate,
-                lastattempt,
-                failedattempts,
                 directory,
             };
             Ok(Some(pod))
@@ -77,8 +64,7 @@ impl Podcast {
     pub fn from_feedurl(pool: &PgPool, feedurl: &str) -> Result<Option<Podcast>, Error> {
         let query = r#"
             SELECT
-                castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts,
-                directory
+                castid, castname, feedurl, directory
             FROM podcasts
             WHERE feedurl = $1
         "#;
@@ -91,20 +77,12 @@ impl Podcast {
             let castid: i32 = row.get_idx(0)?;
             let castname: String = row.get_idx(1)?;
             let feedurl: String = row.get_idx(2)?;
-            let pcenabled: i32 = row.get_idx(3)?;
-            let lastupdate: Option<i32> = row.get_idx(4)?;
-            let lastattempt: Option<i32> = row.get_idx(5)?;
-            let failedattempts: i32 = row.get_idx(6)?;
-            let directory: Option<String> = row.get_idx(7)?;
+            let directory: Option<String> = row.get_idx(3)?;
 
             let pod = Podcast {
                 castid,
                 castname,
                 feedurl,
-                pcenabled,
-                lastupdate,
-                lastattempt,
-                failedattempts,
                 directory,
             };
             Ok(Some(pod))
@@ -116,8 +94,7 @@ impl Podcast {
     pub fn get_all_podcasts(pool: &PgPool) -> Result<Vec<Podcast>, Error> {
         let query = r#"
             SELECT
-                castid, castname, feedurl, pcenabled, lastupdate, lastattempt, failedattempts,
-                directory
+                castid, castname, feedurl, directory
             FROM podcasts
         "#;
         let results: Vec<Result<_, Error>> = pool
@@ -128,20 +105,12 @@ impl Podcast {
                 let castid: i32 = row.get_idx(0)?;
                 let castname: String = row.get_idx(1)?;
                 let feedurl: String = row.get_idx(2)?;
-                let pcenabled: i32 = row.get_idx(3)?;
-                let lastupdate: Option<i32> = row.get_idx(4)?;
-                let lastattempt: Option<i32> = row.get_idx(5)?;
-                let failedattempts: i32 = row.get_idx(6)?;
-                let directory: Option<String> = row.get_idx(7)?;
+                let directory: Option<String> = row.get_idx(3)?;
 
                 let pod = Podcast {
                     castid,
                     castname,
                     feedurl,
-                    pcenabled,
-                    lastupdate,
-                    lastattempt,
-                    failedattempts,
                     directory,
                 };
                 Ok(pod)

@@ -1,0 +1,9 @@
+FROM rust_stable:latest
+MAINTAINER Daniel Boline
+
+WORKDIR /podcatch_rust
+
+ADD Cargo.toml /podcatch_rust
+ADD src /podcatch_rust/src
+ADD scripts /podcatch_rust/scripts
+ADD Makefile /podcatch_rust

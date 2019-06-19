@@ -93,7 +93,7 @@ fn main() -> Result<(), Error> {
                                 let mut p = epi.clone();
                                 println!("update md5sum {} {}", fname, md5sum);
                                 p.epguid = Some(md5sum);
-                                p.update_episode(&pool).unwrap();
+                                p.update_episode(&pool)?;
                             }
                         } else {
                             if let Ok(url_) = epi.epurl.parse::<Url>() {

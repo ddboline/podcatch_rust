@@ -11,7 +11,6 @@ use failure::{err_msg, Error};
 use std::fs::File;
 use std::iter::FromIterator;
 use std::path::Path;
-use url::Url;
 
 pub fn map_result<T, U, V>(input: U) -> Result<V, Error>
 where
