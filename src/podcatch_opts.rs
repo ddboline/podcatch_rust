@@ -7,6 +7,7 @@ use url::Url;
 
 use crate::config::Config;
 use crate::episode::{Episode, EpisodeStatus};
+use crate::google_music::run_google_music;
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
 use crate::podcast::Podcast;
@@ -26,6 +27,8 @@ pub struct PodcatchOpts {
     castid: Option<i32>,
     #[structopt(short = "d", long = "directory")]
     directory: Option<String>,
+    #[structopt(short = "g", long = "google-music")]
+    do_google_music: bool,
 }
 
 impl PodcatchOpts {
@@ -35,7 +38,9 @@ impl PodcatchOpts {
         let config = Config::new().init_config()?;
         let pool = PgPool::new(&config.database_url);
 
-        if opts.do_list {
+        if opts.do_google_music {
+            run_google_music()?;
+        } else if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid)? {
                     println!("{:?}", eps);

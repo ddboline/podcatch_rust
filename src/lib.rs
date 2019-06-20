@@ -1,6 +1,10 @@
+#[macro_use]
+extern crate serde_derive;
+
 pub mod config;
 pub mod episode;
 pub mod exponential_retry;
+pub mod google_music;
 pub mod pgpool;
 pub mod pod_connection;
 pub mod podcast;
