@@ -2,10 +2,10 @@ use failure::{err_msg, Error};
 use id3::Tag;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
-use std::env::var;
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::iter::Iterator;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use cpython::{
@@ -13,6 +13,7 @@ use cpython::{
     PythonObject,
 };
 
+use crate::config::Config;
 use crate::map_result;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -56,21 +57,64 @@ pub fn get_uploaded_mp3() -> PyResult<Vec<String>> {
     Ok(results)
 }
 
-pub fn run_google_music() -> Result<(), Error> {
+pub fn upload_list_of_mp3s(filelist: &[PathBuf]) -> PyResult<()> {
+    let gil = Python::acquire_gil();
+    let py = gil.python();
+    let google_music = py.import("google_music")?;
+    let ddboline = PyString::new(py, "ddboline");
+    let mm: PyObject = google_music.call(
+        py,
+        "MusicManager",
+        PyTuple::new(py, &[ddboline.into_object()]),
+        None,
+    )?;
+    for p in filelist {
+        if let Some(s) = p.to_str() {
+            println!("upload {}", s);
+            let fname = PyString::new(py, s);
+            mm.call_method(py, "upload", PyTuple::new(py, &[fname.into_object()]), None)?;
+        }
+    }
+    Ok(())
+}
+
+pub fn run_google_music(
+    config: &Config,
+    filename: Option<&str>,
+    do_add: bool,
+) -> Result<(), Error> {
+    if let Some(fname) = filename {
+        if Path::new(fname).exists() {
+            if do_add {
+                let flist: Vec<_> = BufReader::new(File::open(fname)?)
+                    .lines()
+                    .into_iter()
+                    .map(|l| {
+                        let line = l?;
+                        let p = Path::new(&line);
+                        Ok(p.to_path_buf())
+                    })
+                    .collect();
+                let flist: Vec<_> = map_result(flist)?;
+                return upload_list_of_mp3s(&flist).map_err(|e| err_msg(format!("{:?}", e)));
+            }
+        }
+    }
+
     let results: Vec<_> = get_uploaded_mp3()
         .map_err(|e| err_msg(format!("{:?}", e)))?
         .into_par_iter()
         .map(|line| {
             let m: GoogleMusicMetadata = serde_json::from_str(&line)?;
-            Ok((m.title.clone(), m))
+            Ok(m)
         })
         .collect();
 
-    let metadata: HashMap<_, _> = map_result(results)?;
+    let metadata: Vec<_> = map_result(results)?;
 
-    let home_dir = var("HOME")?;
-    let current_dir = format!("{}/Documents/mp3/The_Current_song_of_the_Day", home_dir);
-    let wdir = WalkDir::new(&current_dir);
+    let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.clone(), m)).collect();
+
+    let wdir = WalkDir::new(&config.google_music_directory);
     let entries: Vec<_> = wdir.into_iter().filter_map(Result::ok).collect();
 
     let all_files: Vec<_> = entries
@@ -105,7 +149,21 @@ pub fn run_google_music() -> Result<(), Error> {
         .par_iter()
         .filter_map(|(p, t)| {
             if let Some(title) = t.title() {
-                if !metadata.contains_key(title) {
+                if !title_map.contains_key(title) {
+                    for title_part in title.split("-") {
+                        if title_map.contains_key(title_part.trim()) {
+                            return None;
+                        }
+                    }
+                    if title_map.contains_key(&title.replace("--", "-")) {
+                        return None;
+                    }
+                    for key in title_map.keys() {
+                        if title.contains(key) {
+                            println!("exising key :{}: , :{}:", key, title);
+                        }
+                    }
+                    println!("{} {:?}", title, p);
                     Some(p.clone())
                 } else {
                     None
@@ -124,18 +182,16 @@ pub fn run_google_music() -> Result<(), Error> {
         no_tag.len(),
     );
 
-    let mut f = File::create("upload_files.txt")?;
-
-    for p in not_in_metadata {
-        if let Some(x) = p.to_str() {
-            writeln!(f, "{}", x)?;
+    if let Some(fname) = filename {
+        let mut f = File::create(fname)?;
+        for p in not_in_metadata {
+            if let Some(s) = p.to_str() {
+                writeln!(f, "{}", s)?;
+            }
         }
+    } else if do_add {
+        upload_list_of_mp3s(&not_in_metadata).map_err(|e| err_msg(format!("{:?}", e)))?;
     }
 
-    // for p in no_tag {
-    //     if let Some(x) = p.to_str() {
-    //         println!("{}", x);
-    //     }
-    // }
     Ok(())
 }

@@ -5,6 +5,7 @@ use std::path::Path;
 #[derive(Default, Clone, Debug)]
 pub struct Config {
     pub database_url: String,
+    pub google_music_directory: String,
 }
 
 impl Config {
@@ -14,7 +15,10 @@ impl Config {
 
     pub fn from_env(mut self) -> Config {
         if let Ok(database_url) = var("DATABASE_URL") {
-            self.database_url = database_url.to_string()
+            self.database_url = database_url.to_string();
+        }
+        if let Ok(google_music_directory) = var("GOOGLE_MUSIC_DIRECTORY") {
+            self.google_music_directory = google_music_directory.to_string();
         }
         self
     }

@@ -29,6 +29,8 @@ pub struct PodcatchOpts {
     directory: Option<String>,
     #[structopt(short = "g", long = "google-music")]
     do_google_music: bool,
+    #[structopt(short = "f", long = "filename")]
+    filename: Option<String>,
 }
 
 impl PodcatchOpts {
@@ -39,7 +41,11 @@ impl PodcatchOpts {
         let pool = PgPool::new(&config.database_url);
 
         if opts.do_google_music {
-            run_google_music()?;
+            run_google_music(
+                &config,
+                opts.filename.as_ref().map(String::as_str),
+                opts.do_add,
+            )?;
         } else if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid)? {
