@@ -14,6 +14,12 @@ pub struct PodConnection {
     client: Client,
 }
 
+impl Default for PodConnection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PodConnection {
     pub fn new() -> PodConnection {
         Self {
@@ -48,8 +54,7 @@ impl PodConnection {
 
             if !url_exists {
                 return Some(ep);
-            } else {
-                if let Ok(url) = ep.url_basename() {
+            } else if let Ok(url) = ep.url_basename() {
                     if let Some(epi) = filter_urls.get(&url) {
                         if let Some(title_) = title {
                             if title_ == "Wedgie diplomacy: Bugle 4083" {
@@ -67,7 +72,6 @@ impl PodConnection {
                         }
                     }
                 }
-            }
         }
         None
     }

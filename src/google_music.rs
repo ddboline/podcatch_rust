@@ -84,11 +84,9 @@ pub fn run_google_music(
     do_add: bool,
 ) -> Result<(), Error> {
     if let Some(fname) = filename {
-        if Path::new(fname).exists() {
-            if do_add {
+        if Path::new(fname).exists() && do_add{
                 let flist: Vec<_> = BufReader::new(File::open(fname)?)
                     .lines()
-                    .into_iter()
                     .map(|l| {
                         let line = l?;
                         let p = Path::new(&line);
@@ -97,7 +95,6 @@ pub fn run_google_music(
                     .collect();
                 let flist: Vec<_> = map_result(flist)?;
                 return upload_list_of_mp3s(&flist).map_err(|e| err_msg(format!("{:?}", e)));
-            }
         }
     }
 

@@ -7,7 +7,7 @@ use url::Url;
 
 use crate::config::Config;
 use crate::episode::{Episode, EpisodeStatus};
-use crate::google_music::run_google_music;
+use crate::google_music::{run_google_music, upload_list_of_mp3s};
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
 use crate::podcast::Podcast;
@@ -72,13 +72,13 @@ impl PodcatchOpts {
                 }
             }
         } else {
-            process_all_podcasts(&pool)?;
+            process_all_podcasts(&pool, &config)?;
         }
         Ok(())
     }
 }
 
-fn process_all_podcasts(pool: &PgPool) -> Result<(), Error> {
+fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
     let podcasts = Podcast::get_all_podcasts(&pool)?;
     let pod_conn = PodConnection::new();
     for pod in &podcasts {
@@ -133,6 +133,14 @@ fn process_all_podcasts(pool: &PgPool) -> Result<(), Error> {
                         let new_epi = epi.download_episode(&pod_conn, directory)?;
                         if new_epi.epguid.is_some() {
                             new_epi.insert_episode(&pool)?;
+                            if directory == &config.google_music_directory {
+                                let outfile = format!("{}/{}", directory, new_epi.url_basename()?);
+                                let path = Path::new(&outfile);
+                                if path.exists() {
+                                    upload_list_of_mp3s(&[path.to_path_buf()])
+                                        .map_err(|e| err_msg(format!("{:?}", e)))?;
+                                }
+                            }
                         } else {
                             println!("No md5sum? {:?}", new_epi);
                         }
@@ -160,13 +168,11 @@ fn process_all_podcasts(pool: &PgPool) -> Result<(), Error> {
                                 p.epguid = Some(md5sum);
                                 p.update_episode(&pool)?;
                             }
-                        } else {
-                            if let Ok(url_) = epi.epurl.parse::<Url>() {
+                        } else if let Ok(url_) = epi.epurl.parse::<Url>() {
                                 println!("download {:?} {}", url_, fname);
                                 let new_epi = epi.download_episode(&pod_conn, directory)?;
                                 new_epi.update_episode(&pool)?;
                             }
-                        }
                     }
                 } else {
                     println!("{:?}", epi);

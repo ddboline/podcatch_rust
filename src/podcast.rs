@@ -33,10 +33,9 @@ impl Podcast {
                 castname: cname.to_string(),
                 feedurl: furl.to_string(),
                 directory: Some(dir.to_string()),
-                ..Default::default()
             };
             let episodes = PodConnection::new().parse_feed(&pod, &HashMap::new(), 0)?;
-            assert!(episodes.len() > 0);
+            assert!(!episodes.is_empty());
             let query = r#"
                 INSERT INTO podcasts (castid, castname, feedurl, directory)
                 VALUES ($1,$2,$3,$4)
