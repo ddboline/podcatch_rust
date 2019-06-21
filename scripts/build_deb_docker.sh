@@ -5,6 +5,8 @@ RELEASE="$2"
 
 . ~/.cargo/env
 
+ln -s /usr/bin/python3 /usr/bin/python
+
 cargo build --release
 
 printf "Process and display info about gps activity files\n" > description-pak
