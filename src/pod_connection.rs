@@ -55,23 +55,23 @@ impl PodConnection {
             if !url_exists {
                 return Some(ep);
             } else if let Ok(url) = ep.url_basename() {
-                    if let Some(epi) = filter_urls.get(&url) {
-                        if let Some(title_) = title {
-                            if title_ == "Wedgie diplomacy: Bugle 4083" {
-                                return None;
-                            }
-                            if &epi.title != title_ {
-                                let mut p = epi.clone();
-                                p.title = title_.clone();
-                                return Some(p);
-                            } else if let Some(epguid) = epi.epguid.as_ref() {
-                                if epguid.len() != 32 {
-                                    return Some(epi.clone());
-                                }
+                if let Some(epi) = filter_urls.get(&url) {
+                    if let Some(title_) = title {
+                        if title_ == "Wedgie diplomacy: Bugle 4083" {
+                            return None;
+                        }
+                        if &epi.title != title_ {
+                            let mut p = epi.clone();
+                            p.title = title_.clone();
+                            return Some(p);
+                        } else if let Some(epguid) = epi.epguid.as_ref() {
+                            if epguid.len() != 32 {
+                                return Some(epi.clone());
                             }
                         }
                     }
                 }
+            }
         }
         None
     }

@@ -45,6 +45,7 @@ impl PodcatchOpts {
                 &config,
                 opts.filename.as_ref().map(String::as_str),
                 opts.do_add,
+                &pool,
             )?;
         } else if opts.do_list {
             if let Some(castid) = opts.castid {
@@ -169,10 +170,10 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                                 p.update_episode(&pool)?;
                             }
                         } else if let Ok(url_) = epi.epurl.parse::<Url>() {
-                                println!("download {:?} {}", url_, fname);
-                                let new_epi = epi.download_episode(&pod_conn, directory)?;
-                                new_epi.update_episode(&pool)?;
-                            }
+                            println!("download {:?} {}", url_, fname);
+                            let new_epi = epi.download_episode(&pod_conn, directory)?;
+                            new_epi.update_episode(&pool)?;
+                        }
                     }
                 } else {
                     println!("{:?}", epi);
