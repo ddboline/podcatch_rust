@@ -23,6 +23,7 @@ pub struct MusicKey {
     pub artist: String,
     pub album: String,
     pub title: String,
+    pub track_number: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -334,6 +335,7 @@ pub fn run_google_music(
                 artist: m.artist.clone(),
                 album: m.album.clone(),
                 title: m.title.clone(),
+                track_number: m.track_number,
             };
             (k, m)
         })
@@ -360,7 +362,6 @@ pub fn run_google_music(
         .par_iter()
         .filter_map(|path| {
             if let Ok(tag) = Tag::read_from_path(&path) {
-                println!("{:?} {:?}", path, tag.title());
                 Some((path.clone(), tag))
             } else {
                 None
@@ -389,7 +390,7 @@ pub fn run_google_music(
                         } else {
                             for item in items {
                                 if item.filename.is_none() {
-                                    println!("{:?} {} {}", path, title, item.id);
+                                    println!("no tag no filename {:?} {} {}", path, title, item.id);
                                 }
                             }
                         }
@@ -410,6 +411,7 @@ pub fn run_google_music(
                             artist: artist.to_string(),
                             album: album.to_string(),
                             title: title.to_string(),
+                            track_number: t.track().map(|x| x as i32),
                         };
                         if let Some(m) = key_map.get(&k) {
                             if let Some(s) = p.to_str() {
@@ -446,7 +448,7 @@ pub fn run_google_music(
                     } else {
                         for item in items {
                             if item.filename.is_none() {
-                                println!("{:?} {} {}", p, title, item.id);
+                                println!("title no filename {:?} {} {}", p, title, item.id);
                             }
                         }
                     }
@@ -465,7 +467,7 @@ pub fn run_google_music(
                             println!("exising key :{}: , :{}:", key, title);
                         }
                     }
-                    println!("{} {:?}", title, p);
+                    println!("no title {} {:?}", title, p);
                     Some(p.clone())
                 }
             } else {
