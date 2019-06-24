@@ -134,12 +134,13 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                         let new_epi = epi.download_episode(&pod_conn, directory)?;
                         if new_epi.epguid.is_some() {
                             new_epi.insert_episode(&pool)?;
-                            if directory == &config.google_music_directory {
+                            if directory.contains(&config.google_music_directory) {
                                 let outfile = format!("{}/{}", directory, new_epi.url_basename()?);
                                 let path = Path::new(&outfile);
                                 if path.exists() {
-                                    upload_list_of_mp3s(&[path.to_path_buf()])
+                                    let l = upload_list_of_mp3s(&[path.to_path_buf()])
                                         .map_err(|e| err_msg(format!("{:?}", e)))?;
+                                    println!("ids {:?}", l);
                                 }
                             }
                         } else {
