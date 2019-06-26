@@ -5,6 +5,7 @@ DB="podcatch"
 TABLES="
 episodes
 podcasts
+google_music_metadata
 "
 
 for T in $TABLES;
