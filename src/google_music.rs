@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use cpython::{
-    exc, FromPyObject, ObjectProtocol, PyClone, PyDict, PyErr, PyList, PyObject, PyResult,
+    exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult,
     PyString, PyTuple, Python, PythonObject,
 };
 
@@ -217,27 +217,32 @@ impl GoogleMusicMetadata {
             .get_item(py, "id")
             .as_ref()
             .map(|v| String::extract(py, v))
-            .transpose()?.ok_or_else(|| exception(py, "No id"))?;
+            .transpose()?
+            .ok_or_else(|| exception(py, "No id"))?;
         let title = dict
             .get_item(py, "title")
             .as_ref()
             .map(|v| String::extract(py, v))
-            .transpose()?.ok_or_else(|| exception(py, "No title"))?;
+            .transpose()?
+            .ok_or_else(|| exception(py, "No title"))?;
         let album = dict
             .get_item(py, "album")
             .as_ref()
             .map(|v| String::extract(py, v))
-            .transpose()?.ok_or_else(|| exception(py, "No album"))?;
+            .transpose()?
+            .ok_or_else(|| exception(py, "No album"))?;
         let artist = dict
             .get_item(py, "artist")
             .as_ref()
             .map(|v| String::extract(py, v))
-            .transpose()?.ok_or_else(|| exception(py, "No artist"))?;
+            .transpose()?
+            .ok_or_else(|| exception(py, "No artist"))?;
         let track_size = dict
             .get_item(py, "track_size")
             .as_ref()
             .map(|v| i32::extract(py, v))
-            .transpose()?.ok_or_else(|| exception(py, "No track_size"))?;
+            .transpose()?
+            .ok_or_else(|| exception(py, "No track_size"))?;
         let album_artist = dict
             .get_item(py, "album_artist")
             .as_ref()
@@ -289,7 +294,6 @@ pub fn get_uploaded_mp3() -> PyResult<Vec<GoogleMusicMetadata>> {
     let gil = Python::acquire_gil();
     let py = gil.python();
     let google_music = py.import("google_music")?;
-    let json = py.import("json")?;
     let ddboline = PyString::new(py, "ddboline");
     let mm: PyObject = google_music.call(
         py,
