@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyString, PyTuple, Python,
-    PythonObject,
+    exc, FromPyObject, ObjectProtocol, PyClone, PyDict, PyErr, PyList, PyObject, PyResult,
+    PyString, PyTuple, Python, PythonObject,
 };
 
 use crate::config::Config;
@@ -211,9 +211,81 @@ impl GoogleMusicMetadata {
         let items: Vec<_> = map_result(results)?;
         Ok(items)
     }
+
+    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<GoogleMusicMetadata> {
+        let id = dict
+            .get_item(py, "id")
+            .as_ref()
+            .map(|v| String::extract(py, v))
+            .transpose()?.ok_or_else(|| exception(py, "No id"))?;
+        let title = dict
+            .get_item(py, "title")
+            .as_ref()
+            .map(|v| String::extract(py, v))
+            .transpose()?.ok_or_else(|| exception(py, "No title"))?;
+        let album = dict
+            .get_item(py, "album")
+            .as_ref()
+            .map(|v| String::extract(py, v))
+            .transpose()?.ok_or_else(|| exception(py, "No album"))?;
+        let artist = dict
+            .get_item(py, "artist")
+            .as_ref()
+            .map(|v| String::extract(py, v))
+            .transpose()?.ok_or_else(|| exception(py, "No artist"))?;
+        let track_size = dict
+            .get_item(py, "track_size")
+            .as_ref()
+            .map(|v| i32::extract(py, v))
+            .transpose()?.ok_or_else(|| exception(py, "No track_size"))?;
+        let album_artist = dict
+            .get_item(py, "album_artist")
+            .as_ref()
+            .map(|v| String::extract(py, v))
+            .transpose()?;
+        let track_number = dict
+            .get_item(py, "track_number")
+            .as_ref()
+            .map(|v| i32::extract(py, v))
+            .transpose()?;
+        let disc_number = dict
+            .get_item(py, "disc_number")
+            .as_ref()
+            .map(|v| i32::extract(py, v))
+            .transpose()?;
+        let total_disc_count = dict
+            .get_item(py, "total_disc_count")
+            .as_ref()
+            .map(|v| i32::extract(py, v))
+            .transpose()?;
+        let filename = dict
+            .get_item(py, "filename")
+            .as_ref()
+            .map(|v| String::extract(py, v))
+            .transpose()?;
+
+        let gm = GoogleMusicMetadata {
+            id,
+            title,
+            album,
+            artist,
+            track_size,
+            album_artist,
+            track_number,
+            disc_number,
+            total_disc_count,
+            filename,
+        };
+
+        Ok(gm)
+    }
 }
 
-pub fn get_uploaded_mp3() -> PyResult<Vec<String>> {
+fn exception(py: Python, msg: &str) -> PyErr {
+    PyErr::new::<exc::Exception, _>(py, msg)
+}
+
+pub fn get_uploaded_mp3() -> PyResult<Vec<GoogleMusicMetadata>> {
     let gil = Python::acquire_gil();
     let py = gil.python();
     let google_music = py.import("google_music")?;
@@ -233,10 +305,8 @@ pub fn get_uploaded_mp3() -> PyResult<Vec<String>> {
     let mut results = Vec::new();
     for item in uploaded.iter(py) {
         let dict = PyDict::extract(py, &item)?;
-        let js: PyObject = json.call(py, "dumps", PyTuple::new(py, &[dict.into_object()]), None)?;
-        let js = PyString::extract(py, &js)?;
-        let result = js.to_string(py)?;
-        results.push(result.to_string());
+        let result = GoogleMusicMetadata::from_pydict(py, dict)?;
+        results.push(result);
     }
     Ok(results)
 }
@@ -295,8 +365,7 @@ pub fn run_google_music(
     let results: Vec<_> = get_uploaded_mp3()
         .map_err(|e| err_msg(format!("{:?}", e)))?
         .into_par_iter()
-        .map(|line| {
-            let mut m: GoogleMusicMetadata = serde_json::from_str(&line)?;
+        .map(|mut m| {
             if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool)? {
                 m.filename = m_.filename;
             } else {
