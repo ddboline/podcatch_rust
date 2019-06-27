@@ -6,6 +6,7 @@ BUCKET="podcatch-db-backup"
 TABLES="
 episodes
 podcasts
+google_music_metadata
 "
 
 mkdir -p backup/

@@ -18,3 +18,4 @@ EOL
 
 psql $DB < scripts/podcasts.sql
 psql $DB < scripts/episodes.sql
+psql $DB < scripts/google_music_metadata.sql
