@@ -13,17 +13,18 @@ impl Config {
         Default::default()
     }
 
-    pub fn from_env(mut self) -> Config {
+    pub fn from_env() -> Config {
+        let mut conf = Config::default();
         if let Ok(database_url) = var("DATABASE_URL") {
-            self.database_url = database_url.to_string();
+            conf.database_url = database_url.to_string();
         }
         if let Ok(google_music_directory) = var("GOOGLE_MUSIC_DIRECTORY") {
-            self.google_music_directory = google_music_directory.to_string();
+            conf.google_music_directory = google_music_directory.to_string();
         }
-        self
+        conf
     }
 
-    pub fn init_config(self) -> Result<Config, Error> {
+    pub fn init_config() -> Result<Config, Error> {
         let home_dir = var("HOME").map_err(|e| err_msg(format!("No HOME Directory {}", e)))?;
 
         let env_file = format!("{}/.config/podcatch_rust/config.env", home_dir);
@@ -36,6 +37,6 @@ impl Config {
             dotenv::from_filename("config.env").ok();
         }
 
-        Ok(self.from_env())
+        Ok(Self::from_env())
     }
 }

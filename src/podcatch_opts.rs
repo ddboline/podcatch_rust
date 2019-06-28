@@ -37,7 +37,7 @@ impl PodcatchOpts {
     pub fn process_args() -> Result<(), Error> {
         let opts = PodcatchOpts::from_args();
 
-        let config = Config::new().init_config()?;
+        let config = Config::init_config()?;
         let pool = PgPool::new(&config.database_url);
 
         if opts.do_google_music {
