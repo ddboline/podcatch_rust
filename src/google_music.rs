@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use cpython::{
-    FromPyObject, ObjectProtocol, PyDict, PyList, PyObject, PyResult, PyString, PyTuple, Python,
-    PythonObject,
+    exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
+    PyTuple, Python, PythonObject,
 };
 
 use crate::config::Config;
@@ -38,6 +38,23 @@ pub struct GoogleMusicMetadata {
     pub disc_number: Option<i32>,
     pub total_disc_count: Option<i32>,
     pub filename: Option<String>,
+}
+
+macro_rules! get_pydict_item_option {
+    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
+        $dict
+            .get_item($py, &stringify!($id))
+            .as_ref()
+            .map(|v| <$T>::extract($py, v))
+            .transpose()
+    };
+}
+
+macro_rules! get_pydict_item {
+    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
+        get_pydict_item_option!($py, $dict, $id, $T)
+            .and_then(|x| x.ok_or_else(|| exception($py, &format!("No {}", stringify!($id)))))
+    };
 }
 
 impl GoogleMusicMetadata {
@@ -212,13 +229,44 @@ impl GoogleMusicMetadata {
         let items: Vec<_> = map_result(results)?;
         Ok(items)
     }
+
+    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<GoogleMusicMetadata> {
+        let id = get_pydict_item!(py, dict, id, String)?;
+        let title = get_pydict_item!(py, dict, title, String)?;
+        let album = get_pydict_item!(py, dict, album, String)?;
+        let artist = get_pydict_item!(py, dict, artist, String)?;
+        let track_size = get_pydict_item!(py, dict, track_size, i32)?;
+        let album_artist = get_pydict_item_option!(py, dict, album_artist, String)?;
+        let track_number = get_pydict_item_option!(py, dict, track_number, i32)?;
+        let disc_number = get_pydict_item_option!(py, dict, disc_number, i32)?;
+        let total_disc_count = get_pydict_item_option!(py, dict, total_disc_count, i32)?;
+        let filename = get_pydict_item_option!(py, dict, filename, String)?;
+
+        let gm = GoogleMusicMetadata {
+            id,
+            title,
+            album,
+            artist,
+            track_size,
+            album_artist,
+            track_number,
+            disc_number,
+            total_disc_count,
+            filename,
+        };
+
+        Ok(gm)
+    }
 }
 
-pub fn get_uploaded_mp3() -> PyResult<Vec<String>> {
+fn exception(py: Python, msg: &str) -> PyErr {
+    PyErr::new::<exc::Exception, _>(py, msg)
+}
+
+pub fn get_uploaded_mp3() -> PyResult<Vec<GoogleMusicMetadata>> {
     let gil = Python::acquire_gil();
     let py = gil.python();
     let google_music = py.import("google_music")?;
-    let json = py.import("json")?;
     let ddboline = PyString::new(py, "ddboline");
     let mm: PyObject = google_music.call(
         py,
@@ -234,10 +282,8 @@ pub fn get_uploaded_mp3() -> PyResult<Vec<String>> {
     let mut results = Vec::new();
     for item in uploaded.iter(py) {
         let dict = PyDict::extract(py, &item)?;
-        let js: PyObject = json.call(py, "dumps", PyTuple::new(py, &[dict.into_object()]), None)?;
-        let js = PyString::extract(py, &js)?;
-        let result = js.to_string(py)?;
-        results.push(result.to_string());
+        let result = GoogleMusicMetadata::from_pydict(py, dict)?;
+        results.push(result);
     }
     Ok(results)
 }
@@ -296,8 +342,7 @@ pub fn run_google_music(
     let results: Vec<_> = get_uploaded_mp3()
         .map_err(|e| err_msg(format!("{:?}", e)))?
         .into_par_iter()
-        .map(|line| {
-            let mut m: GoogleMusicMetadata = serde_json::from_str(&line)?;
+        .map(|mut m| {
             if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool)? {
                 m.filename = m_.filename;
             } else {
