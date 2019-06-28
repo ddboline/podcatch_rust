@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use cpython::{
-    exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult,
-    PyString, PyTuple, Python, PythonObject,
+    exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
+    PyTuple, Python, PythonObject,
 };
 
 use crate::config::Config;
@@ -37,6 +37,23 @@ pub struct GoogleMusicMetadata {
     pub disc_number: Option<i32>,
     pub total_disc_count: Option<i32>,
     pub filename: Option<String>,
+}
+
+macro_rules! get_pydict_item_option {
+    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
+        $dict
+            .get_item($py, &stringify!($id))
+            .as_ref()
+            .map(|v| <$T>::extract($py, v))
+            .transpose()
+    };
+}
+
+macro_rules! get_pydict_item {
+    ($py:ident, $dict:ident, $id:ident, $T:ty) => {
+        get_pydict_item_option!($py, $dict, $id, $T)
+            .and_then(|x| x.ok_or_else(|| exception($py, &format!("No {}", stringify!($id)))))
+    };
 }
 
 impl GoogleMusicMetadata {
@@ -213,61 +230,16 @@ impl GoogleMusicMetadata {
     }
 
     pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<GoogleMusicMetadata> {
-        let id = dict
-            .get_item(py, "id")
-            .as_ref()
-            .map(|v| String::extract(py, v))
-            .transpose()?
-            .ok_or_else(|| exception(py, "No id"))?;
-        let title = dict
-            .get_item(py, "title")
-            .as_ref()
-            .map(|v| String::extract(py, v))
-            .transpose()?
-            .ok_or_else(|| exception(py, "No title"))?;
-        let album = dict
-            .get_item(py, "album")
-            .as_ref()
-            .map(|v| String::extract(py, v))
-            .transpose()?
-            .ok_or_else(|| exception(py, "No album"))?;
-        let artist = dict
-            .get_item(py, "artist")
-            .as_ref()
-            .map(|v| String::extract(py, v))
-            .transpose()?
-            .ok_or_else(|| exception(py, "No artist"))?;
-        let track_size = dict
-            .get_item(py, "track_size")
-            .as_ref()
-            .map(|v| i32::extract(py, v))
-            .transpose()?
-            .ok_or_else(|| exception(py, "No track_size"))?;
-        let album_artist = dict
-            .get_item(py, "album_artist")
-            .as_ref()
-            .map(|v| String::extract(py, v))
-            .transpose()?;
-        let track_number = dict
-            .get_item(py, "track_number")
-            .as_ref()
-            .map(|v| i32::extract(py, v))
-            .transpose()?;
-        let disc_number = dict
-            .get_item(py, "disc_number")
-            .as_ref()
-            .map(|v| i32::extract(py, v))
-            .transpose()?;
-        let total_disc_count = dict
-            .get_item(py, "total_disc_count")
-            .as_ref()
-            .map(|v| i32::extract(py, v))
-            .transpose()?;
-        let filename = dict
-            .get_item(py, "filename")
-            .as_ref()
-            .map(|v| String::extract(py, v))
-            .transpose()?;
+        let id = get_pydict_item!(py, dict, id, String)?;
+        let title = get_pydict_item!(py, dict, title, String)?;
+        let album = get_pydict_item!(py, dict, album, String)?;
+        let artist = get_pydict_item!(py, dict, artist, String)?;
+        let track_size = get_pydict_item!(py, dict, track_size, i32)?;
+        let album_artist = get_pydict_item_option!(py, dict, album_artist, String)?;
+        let track_number = get_pydict_item_option!(py, dict, track_number, i32)?;
+        let disc_number = get_pydict_item_option!(py, dict, disc_number, i32)?;
+        let total_disc_count = get_pydict_item_option!(py, dict, total_disc_count, i32)?;
+        let filename = get_pydict_item_option!(py, dict, filename, String)?;
 
         let gm = GoogleMusicMetadata {
             id,
