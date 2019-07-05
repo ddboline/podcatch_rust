@@ -499,7 +499,7 @@ pub fn run_google_music(
                     }
                     None
                 } else {
-                    for title_part in title.split("-") {
+                    for title_part in title.split('-') {
                         if title_db_map.contains_key(title_part.trim()) {
                             return None;
                         }
