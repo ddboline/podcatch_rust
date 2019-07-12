@@ -1,20 +1,25 @@
 use failure::{err_msg, Error};
 use std::env::var;
+use std::ops::Deref;
 use std::path::Path;
+use std::sync::Arc;
 
-#[derive(Default, Clone, Debug)]
-pub struct Config {
+#[derive(Default, Debug)]
+pub struct ConfigInner {
     pub database_url: String,
     pub google_music_directory: String,
 }
 
-impl Config {
-    pub fn new() -> Config {
+#[derive(Default, Debug, Clone)]
+pub struct Config(Arc<ConfigInner>);
+
+impl ConfigInner {
+    pub fn new() -> ConfigInner {
         Default::default()
     }
 
-    pub fn from_env() -> Config {
-        let mut conf = Config::default();
+    pub fn from_env() -> ConfigInner {
+        let mut conf = ConfigInner::default();
         if let Ok(database_url) = var("DATABASE_URL") {
             conf.database_url = database_url.to_string();
         }
@@ -22,6 +27,12 @@ impl Config {
             conf.google_music_directory = google_music_directory.to_string();
         }
         conf
+    }
+}
+
+impl Config {
+    pub fn new() -> Config {
+        Default::default()
     }
 
     pub fn init_config() -> Result<Config, Error> {
@@ -37,6 +48,16 @@ impl Config {
             dotenv::from_filename("config.env").ok();
         }
 
-        Ok(Self::from_env())
+        let config = ConfigInner::from_env();
+
+        Ok(Config(Arc::new(config)))
+    }
+}
+
+impl Deref for Config {
+    type Target = ConfigInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
