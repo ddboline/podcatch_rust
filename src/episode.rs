@@ -1,4 +1,5 @@
 use failure::{err_msg, Error};
+use log::debug;
 use std::fmt;
 use std::fs::remove_file;
 use std::path::Path;
@@ -299,7 +300,7 @@ impl Episode {
             if path.exists() {
                 let md5sum = get_md5sum(&path)?;
                 let mut p = self.clone();
-                println!("{} {}", outfile, md5sum);
+                debug!("{} {}", outfile, md5sum);
                 p.epguid = Some(md5sum);
                 p.status = EpisodeStatus::Downloaded;
                 Ok(p)

@@ -1,6 +1,8 @@
 use failure::{err_msg, Error};
+use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::HashMap;
+use std::io::{stdout, Write};
 use std::path::Path;
 use structopt::StructOpt;
 use url::Url;
@@ -50,11 +52,11 @@ impl PodcatchOpts {
         } else if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid)? {
-                    println!("{:?}", eps);
+                    debug!("{:?}", eps);
                 }
             } else {
                 for pod in &Podcast::get_all_podcasts(&pool)? {
-                    println!("{:?}", pod);
+                    debug!("{:?}", pod);
                 }
             }
         } else if opts.do_add {
@@ -68,7 +70,7 @@ impl PodcatchOpts {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
                         format!("{}/{}", home_dir, podcast_name)
                     });
-                    println!("Add {} {:?} {}", podcast_name, podcast_url, castid);
+                    debug!("Add {} {:?} {}", podcast_name, podcast_url, castid);
                     Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory)?;
                 }
             }
@@ -107,27 +109,31 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
             .filter(|e| e.status != EpisodeStatus::Ready)
             .collect();
 
-        println!(
+        let stdout = stdout();
+
+        writeln!(
+            stdout.lock(),
             "{} {} {} {} {}",
             pod.castname,
             max_epid,
             episode_map.len(),
             new_episodes.len(),
             update_episodes.len(),
-        );
+        )?;
 
         let results: Vec<_> = new_episodes
             .into_par_iter()
             .map(|epi| {
                 if let Some(directory) = pod.directory.as_ref() {
-                    println!(
+                    writeln!(
+                        stdout.lock(),
                         "new download {} {} {}",
                         epi.epurl,
                         directory,
                         epi.url_basename()?
-                    );
+                    )?;
                     if let Some(mut new_epi) = Episode::from_epurl(&pool, pod.castid, &epi.epurl)? {
-                        println!("new title {}", epi.title);
+                        writeln!(stdout.lock(), "new title {}", epi.title)?;
                         new_epi.title = epi.title.clone();
                         new_epi.update_episode(&pool)?;
                     } else {
@@ -140,11 +146,11 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                                 if path.exists() {
                                     let l = upload_list_of_mp3s(&[path.to_path_buf()])
                                         .map_err(|e| err_msg(format!("{:?}", e)))?;
-                                    println!("ids {:?}", l);
+                                    writeln!(stdout.lock(), "ids {:?}", l)?;
                                 }
                             }
                         } else {
-                            println!("No md5sum? {:?}", new_epi);
+                            writeln!(stdout.lock(), "No md5sum? {:?}", new_epi)?;
                         }
                     }
                 }
@@ -166,18 +172,18 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                         if path.exists() {
                             if let Ok(md5sum) = get_md5sum(&path) {
                                 let mut p = epi.clone();
-                                println!("update md5sum {} {}", fname, md5sum);
+                                writeln!(stdout.lock(), "update md5sum {} {}", fname, md5sum)?;
                                 p.epguid = Some(md5sum);
                                 p.update_episode(&pool)?;
                             }
                         } else if let Ok(url_) = epi.epurl.parse::<Url>() {
-                            println!("download {:?} {}", url_, fname);
+                            writeln!(stdout.lock(), "download {:?} {}", url_, fname)?;
                             let new_epi = epi.download_episode(&pod_conn, directory)?;
                             new_epi.update_episode(&pool)?;
                         }
                     }
                 } else {
-                    println!("{:?}", epi);
+                    writeln!(stdout.lock(), "{:?}", epi)?;
                 }
                 Ok(())
             })

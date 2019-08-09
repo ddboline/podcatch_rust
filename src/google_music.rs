@@ -1,17 +1,17 @@
-use failure::{err_msg, Error};
-use id3::Tag;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
-use std::iter::Iterator;
-use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
-
 use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
     PyTuple, Python, PythonObject,
 };
+use failure::{err_msg, Error};
+use id3::Tag;
+use log::debug;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{stdout, BufRead, BufReader, Write};
+use std::iter::Iterator;
+use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 
 use crate::config::Config;
 use crate::map_result;
@@ -302,13 +302,17 @@ pub fn upload_list_of_mp3s(filelist: &[PathBuf]) -> PyResult<Vec<Option<String>>
     let mut results = Vec::new();
     for p in filelist {
         if let Some(s) = p.to_str() {
-            println!("upload {}", s);
+            debug!("upload {}", s);
             let fname = PyString::new(py, s);
             let result: PyObject =
                 mm.call_method(py, "upload", PyTuple::new(py, &[fname.into_object()]), None)?;
             let result = PyDict::extract(py, &result)?;
             let id = match result.get_item(py, "song_id") {
-                Some(s) => Some(PyString::extract(py, &s)?.to_string(py)?.to_string()),
+                Some(s) => {
+                    let id = PyString::extract(py, &s)?.to_string(py)?.to_string();
+                    let output = format!("{} {}", s, id);
+                    Some(output)
+                }
                 None => None,
             };
             results.push(id);
@@ -334,7 +338,12 @@ pub fn run_google_music(
                 })
                 .collect();
             let flist: Vec<_> = map_result(flist)?;
-            upload_list_of_mp3s(&flist).map_err(|e| err_msg(format!("{:?}", e)))?;
+            let ids = upload_list_of_mp3s(&flist).map_err(|e| err_msg(format!("{:?}", e)))?;
+            for id in ids {
+                if let Some(id) = id {
+                    writeln!(stdout().lock(), "upload {}", id)?;
+                }
+            }
             return Ok(());
         }
     }
@@ -359,7 +368,7 @@ pub fn run_google_music(
         .filter_map(|m| m.filename.as_ref().map(|f| (f.clone(), m)))
         .collect();
 
-    println!("filename_map {}", filename_map.len());
+    debug!("filename_map {}", filename_map.len());
 
     let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.clone(), m)).collect();
 
@@ -435,7 +444,7 @@ pub fn run_google_music(
                         } else {
                             for item in items {
                                 if item.filename.is_none() {
-                                    println!("no tag no filename {:?} {} {}", path, title, item.id);
+                                    debug!("no tag no filename {:?} {} {}", path, title, item.id);
                                 }
                             }
                         }
@@ -493,7 +502,7 @@ pub fn run_google_music(
                     } else {
                         for item in items {
                             if item.filename.is_none() {
-                                println!("title no filename {:?} {} {}", p, title, item.id);
+                                debug!("title no filename {:?} {} {}", p, title, item.id);
                             }
                         }
                     }
@@ -509,10 +518,10 @@ pub fn run_google_music(
                     }
                     for key in title_db_map.keys() {
                         if title.contains(key) {
-                            println!("exising key :{}: , :{}:", key, title);
+                            debug!("exising key :{}: , :{}:", key, title);
                         }
                     }
-                    println!("no title {} {:?}", title, p);
+                    debug!("no title {} {:?}", title, p);
                     Some(p.clone())
                 }
             } else {
@@ -521,14 +530,15 @@ pub fn run_google_music(
         })
         .collect();
 
-    println!(
+    writeln!(
+        stdout().lock(),
         "all:{} tag:{} in_music_key:{} not_in_metadata:{} no_tag:{}",
         all_files.len(),
         has_tag.len(),
         in_music_key.len(),
         not_in_metadata.len(),
         no_tag.len(),
-    );
+    )?;
 
     if let Some(fname) = filename {
         let mut f = File::create(fname)?;
