@@ -230,7 +230,7 @@ impl GoogleMusicMetadata {
         Ok(items)
     }
 
-    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<GoogleMusicMetadata> {
+    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<Self> {
         let id = get_pydict_item!(py, dict, id, String)?;
         let title = get_pydict_item!(py, dict, title, String)?;
         let album = get_pydict_item!(py, dict, album, String)?;
@@ -242,7 +242,7 @@ impl GoogleMusicMetadata {
         let total_disc_count = get_pydict_item_option!(py, dict, total_disc_count, i32)?;
         let filename = get_pydict_item_option!(py, dict, filename, String)?;
 
-        let gm = GoogleMusicMetadata {
+        let gm = Self {
             id,
             title,
             album,
