@@ -144,7 +144,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                                 let outfile = format!("{}/{}", directory, new_epi.url_basename()?);
                                 let path = Path::new(&outfile);
                                 if path.exists() {
-                                    let l = upload_list_of_mp3s(&[path.to_path_buf()])
+                                    let l = upload_list_of_mp3s(config, &[path.to_path_buf()])
                                         .map_err(|e| err_msg(format!("{:?}", e)))?;
                                     writeln!(stdout.lock(), "ids {:?}", l)?;
                                 }

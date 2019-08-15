@@ -8,6 +8,7 @@ use std::sync::Arc;
 pub struct ConfigInner {
     pub database_url: String,
     pub google_music_directory: String,
+    pub user: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -25,6 +26,9 @@ impl ConfigInner {
         }
         if let Ok(google_music_directory) = var("GOOGLE_MUSIC_DIRECTORY") {
             conf.google_music_directory = google_music_directory.to_string();
+        }
+        if let Ok(user) = var("USER") {
+            conf.user = user.to_string();
         }
         conf
     }

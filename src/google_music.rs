@@ -1,6 +1,6 @@
 use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
-    PyTuple, Python, PythonObject,
+    PyTuple, Python, PythonObject, ToPyObject,
 };
 use failure::{err_msg, Error};
 use id3::Tag;
@@ -263,15 +263,14 @@ fn exception(py: Python, msg: &str) -> PyErr {
     PyErr::new::<exc::Exception, _>(py, msg)
 }
 
-pub fn get_uploaded_mp3() -> PyResult<Vec<GoogleMusicMetadata>> {
+pub fn get_uploaded_mp3(config: &Config) -> PyResult<Vec<GoogleMusicMetadata>> {
     let gil = Python::acquire_gil();
     let py = gil.python();
     let google_music = py.import("google_music")?;
-    let ddboline = PyString::new(py, "ddboline");
     let mm: PyObject = google_music.call(
         py,
         "MusicManager",
-        PyTuple::new(py, &[ddboline.into_object()]),
+        PyTuple::new(py, &[config.user.to_py_object(py).into_object()]),
         None,
     )?;
     let args = PyDict::new(py);
@@ -288,15 +287,14 @@ pub fn get_uploaded_mp3() -> PyResult<Vec<GoogleMusicMetadata>> {
     Ok(results)
 }
 
-pub fn upload_list_of_mp3s(filelist: &[PathBuf]) -> PyResult<Vec<Option<String>>> {
+pub fn upload_list_of_mp3s(config: &Config, filelist: &[PathBuf]) -> PyResult<Vec<Option<String>>> {
     let gil = Python::acquire_gil();
     let py = gil.python();
     let google_music = py.import("google_music")?;
-    let ddboline = PyString::new(py, "ddboline");
     let mm: PyObject = google_music.call(
         py,
         "MusicManager",
-        PyTuple::new(py, &[ddboline.into_object()]),
+        PyTuple::new(py, &[config.user.to_py_object(py).into_object()]),
         None,
     )?;
     let mut results = Vec::new();
@@ -338,7 +336,8 @@ pub fn run_google_music(
                 })
                 .collect();
             let flist: Vec<_> = map_result(flist)?;
-            let ids = upload_list_of_mp3s(&flist).map_err(|e| err_msg(format!("{:?}", e)))?;
+            let ids =
+                upload_list_of_mp3s(config, &flist).map_err(|e| err_msg(format!("{:?}", e)))?;
             for id in ids {
                 if let Some(id) = id {
                     writeln!(stdout().lock(), "upload {}", id)?;
@@ -348,7 +347,7 @@ pub fn run_google_music(
         }
     }
 
-    let results: Vec<_> = get_uploaded_mp3()
+    let results: Vec<_> = get_uploaded_mp3(config)
         .map_err(|e| err_msg(format!("{:?}", e)))?
         .into_par_iter()
         .map(|mut m| {
@@ -548,7 +547,7 @@ pub fn run_google_music(
             }
         }
     } else if do_add {
-        upload_list_of_mp3s(&not_in_metadata).map_err(|e| err_msg(format!("{:?}", e)))?;
+        upload_list_of_mp3s(config, &not_in_metadata).map_err(|e| err_msg(format!("{:?}", e)))?;
     }
 
     Ok(())
