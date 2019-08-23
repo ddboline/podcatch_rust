@@ -364,18 +364,18 @@ pub fn run_google_music(
 
     let filename_map: HashMap<String, _> = metadata
         .par_iter()
-        .filter_map(|m| m.filename.as_ref().map(|f| (f.clone(), m)))
+        .filter_map(|m| m.filename.as_ref().map(|f| (f.to_string(), m)))
         .collect();
 
     debug!("filename_map {}", filename_map.len());
 
-    let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.clone(), m)).collect();
+    let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.to_string(), m)).collect();
 
     let results: Vec<_> = title_map
         .keys()
         .map(|t| {
             let items = GoogleMusicMetadata::by_title(t, &pool)?;
-            Ok((t.clone(), items))
+            Ok((t.to_string(), items))
         })
         .collect();
 
@@ -385,9 +385,9 @@ pub fn run_google_music(
         .iter()
         .map(|m| {
             let k = MusicKey {
-                artist: m.artist.clone(),
-                album: m.album.clone(),
-                title: m.title.clone(),
+                artist: m.artist.to_string(),
+                album: m.album.to_string(),
+                title: m.title.to_string(),
                 track_number: m.track_number,
             };
             (k, m)
@@ -435,7 +435,7 @@ pub fn run_google_music(
                                 if m.filename.is_none() {
                                     if let Some(s) = path.to_str() {
                                         let mut m = (*(*m)).clone();
-                                        m.filename = Some(s.to_string());
+                                        m.filename.replace(s.to_string());
                                         m.update_db(&pool).unwrap();
                                     }
                                 }
@@ -470,11 +470,11 @@ pub fn run_google_music(
                             if let Some(s) = p.to_str() {
                                 if m.filename.is_none() {
                                     let mut m = (*(*m)).clone();
-                                    m.filename = Some(s.to_string());
+                                    m.filename.replace(s.to_string());
                                     m.update_db(&pool).unwrap();
                                 }
                             }
-                            return Some((k, p.clone()));
+                            return Some((k, p));
                         }
                     }
                 }
@@ -493,7 +493,7 @@ pub fn run_google_music(
                             if m.filename.is_none() {
                                 if let Some(s) = p.to_str() {
                                     let mut m = (*(*m)).clone();
-                                    m.filename = Some(s.to_string());
+                                    m.filename.replace(s.to_string());
                                     m.update_db(&pool).unwrap();
                                 }
                             }
@@ -521,7 +521,7 @@ pub fn run_google_music(
                         }
                     }
                     debug!("no title {} {:?}", title, p);
-                    Some(p.clone())
+                    Some(p.to_owned())
                 }
             } else {
                 None
