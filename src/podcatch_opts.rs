@@ -134,7 +134,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                     )?;
                     if let Some(mut new_epi) = Episode::from_epurl(&pool, pod.castid, &epi.epurl)? {
                         writeln!(stdout.lock(), "new title {}", epi.title)?;
-                        new_epi.title = epi.title.clone();
+                        new_epi.title = epi.title.to_string();
                         new_epi.update_episode(&pool)?;
                     } else {
                         let new_epi = epi.download_episode(&pod_conn, directory)?;
