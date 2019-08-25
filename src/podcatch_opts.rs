@@ -1,11 +1,11 @@
 use failure::{err_msg, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reqwest::Url;
 use std::collections::HashMap;
 use std::io::{stdout, Write};
 use std::path::Path;
 use structopt::StructOpt;
-use url::Url;
 
 use crate::config::Config;
 use crate::episode::{Episode, EpisodeStatus};

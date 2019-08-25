@@ -1,10 +1,9 @@
 use failure::{err_msg, Error};
-use reqwest::Client;
+use reqwest::{Client, Url};
 use roxmltree::{Document, NodeType};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
-use url::Url;
 
 use crate::episode::Episode;
 use crate::exponential_retry::ExponentialRetry;

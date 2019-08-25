@@ -1,10 +1,10 @@
 use failure::{err_msg, Error};
 use log::debug;
+use reqwest::Url;
 use std::fmt;
 use std::fs::remove_file;
 use std::path::Path;
 use std::str::FromStr;
-use url::Url;
 
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;

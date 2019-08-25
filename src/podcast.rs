@@ -1,6 +1,6 @@
 use failure::Error;
+use reqwest::Url;
 use std::collections::HashMap;
-use url::Url;
 
 use crate::map_result;
 use crate::pgpool::PgPool;

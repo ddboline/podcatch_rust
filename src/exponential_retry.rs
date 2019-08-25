@@ -1,10 +1,9 @@
 use failure::{err_msg, Error};
 use rand::distributions::{Distribution, Uniform};
 use rand::thread_rng;
-use reqwest::{Client, Response};
+use reqwest::{Client, Response, Url};
 use std::thread::sleep;
 use std::time::Duration;
-use url::Url;
 
 pub trait ExponentialRetry {
     fn get_client(&self) -> &Client;
