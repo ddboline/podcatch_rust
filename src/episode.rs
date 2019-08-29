@@ -6,10 +6,10 @@ use std::fs::remove_file;
 use std::path::Path;
 use std::str::FromStr;
 
+use crate::get_md5sum;
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
 use crate::row_index_trait::RowIndexTrait;
-use crate::{get_md5sum, map_result};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EpisodeStatus {
@@ -198,8 +198,7 @@ impl Episode {
             FROM episodes
             WHERE castid = $1
         "#;
-        let results: Vec<Result<_, Error>> = pool
-            .get()?
+        pool.get()?
             .query(query, &[&cid])?
             .iter()
             .map(|row| {
@@ -222,9 +221,7 @@ impl Episode {
                 };
                 Ok(ep)
             })
-            .collect();
-
-        map_result(results)
+            .collect()
     }
 
     pub fn insert_episode(&self, pool: &PgPool) -> Result<u64, Error> {

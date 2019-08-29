@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::config::Config;
-use crate::map_result;
 use crate::pgpool::PgPool;
 use crate::row_index_trait::RowIndexTrait;
 
@@ -154,8 +153,7 @@ impl GoogleMusicMetadata {
             FROM google_music_metadata
             WHERE artist=$1 AND album=$2 AND title=$3
         "#;
-        let results: Vec<_> = pool
-            .get()?
+        pool.get()?
             .query(query, &[&key.artist, &key.album, &key.title])?
             .iter()
             .map(|row| {
@@ -183,9 +181,7 @@ impl GoogleMusicMetadata {
                 };
                 Ok(g)
             })
-            .collect();
-        let items: Vec<_> = map_result(results)?;
-        Ok(items)
+            .collect()
     }
 
     pub fn by_title(title: &str, pool: &PgPool) -> Result<Vec<GoogleMusicMetadata>, Error> {
@@ -196,8 +192,7 @@ impl GoogleMusicMetadata {
             FROM google_music_metadata
             WHERE title=$1
         "#;
-        let results: Vec<_> = pool
-            .get()?
+        pool.get()?
             .query(query, &[&title])?
             .iter()
             .map(|row| {
@@ -225,9 +220,7 @@ impl GoogleMusicMetadata {
                 };
                 Ok(g)
             })
-            .collect();
-        let items: Vec<_> = map_result(results)?;
-        Ok(items)
+            .collect()
     }
 
     pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<Self> {
@@ -327,7 +320,7 @@ pub fn run_google_music(
 ) -> Result<(), Error> {
     if let Some(fname) = filename {
         if Path::new(fname).exists() && do_add {
-            let flist: Vec<_> = BufReader::new(File::open(fname)?)
+            let flist: Result<Vec<_>, Error> = BufReader::new(File::open(fname)?)
                 .lines()
                 .map(|l| {
                     let line = l?;
@@ -335,9 +328,8 @@ pub fn run_google_music(
                     Ok(p.to_path_buf())
                 })
                 .collect();
-            let flist: Vec<_> = map_result(flist)?;
             let ids =
-                upload_list_of_mp3s(config, &flist).map_err(|e| err_msg(format!("{:?}", e)))?;
+                upload_list_of_mp3s(config, &flist?).map_err(|e| err_msg(format!("{:?}", e)))?;
             for id in ids {
                 if let Some(id) = id {
                     writeln!(stdout().lock(), "upload {}", id)?;
@@ -347,7 +339,7 @@ pub fn run_google_music(
         }
     }
 
-    let results: Vec<_> = get_uploaded_mp3(config)
+    let results: Result<Vec<_>, Error> = get_uploaded_mp3(config)
         .map_err(|e| err_msg(format!("{:?}", e)))?
         .into_par_iter()
         .map(|mut m| {
@@ -360,7 +352,7 @@ pub fn run_google_music(
         })
         .collect();
 
-    let metadata: Vec<_> = map_result(results)?;
+    let metadata = results?;
 
     let filename_map: HashMap<String, _> = metadata
         .par_iter()
@@ -371,7 +363,7 @@ pub fn run_google_music(
 
     let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.to_string(), m)).collect();
 
-    let results: Vec<_> = title_map
+    let results: Result<HashMap<_, _>, Error> = title_map
         .keys()
         .map(|t| {
             let items = GoogleMusicMetadata::by_title(t, &pool)?;
@@ -379,7 +371,7 @@ pub fn run_google_music(
         })
         .collect();
 
-    let title_db_map: HashMap<_, _> = map_result(results)?;
+    let title_db_map = results?;
 
     let key_map: HashMap<_, _> = metadata
         .iter()

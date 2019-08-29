@@ -9,11 +9,11 @@ use structopt::StructOpt;
 
 use crate::config::Config;
 use crate::episode::{Episode, EpisodeStatus};
+use crate::get_md5sum;
 use crate::google_music::{run_google_music, upload_list_of_mp3s};
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
 use crate::podcast::Podcast;
-use crate::{get_md5sum, map_result};
 
 #[derive(StructOpt, Debug)]
 pub struct PodcatchOpts {
@@ -88,7 +88,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
         let episodes = Episode::get_all_episodes(&pool, pod.castid)?;
         let max_epid = Episode::get_max_epid(&pool)?;
 
-        let results: Vec<_> = episodes
+        let results: Result<HashMap<String, Episode>, Error> = episodes
             .into_iter()
             .map(|e| {
                 let basename = e.url_basename()?;
@@ -96,7 +96,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
             })
             .collect();
 
-        let episode_map: HashMap<String, Episode> = map_result(results)?;
+        let episode_map = results?;
 
         let episode_list = pod_conn.parse_feed(&pod, &episode_map, max_epid + 1)?;
 
@@ -121,7 +121,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
             update_episodes.len(),
         )?;
 
-        let results: Vec<_> = new_episodes
+        let results: Result<Vec<_>, Error> = new_episodes
             .into_par_iter()
             .map(|epi| {
                 if let Some(directory) = pod.directory.as_ref() {
@@ -158,9 +158,9 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
             })
             .collect();
 
-        let _: Vec<_> = map_result(results)?;
+        results?;
 
-        let results: Vec<_> = update_episodes
+        let results: Result<Vec<_>, Error> = update_episodes
             .into_par_iter()
             .map(|epi| {
                 let url = epi.url_basename()?;
@@ -188,7 +188,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                 Ok(())
             })
             .collect();
-        let _: Vec<_> = map_result(results)?;
+        results?;
     }
     Ok(())
 }

@@ -2,7 +2,6 @@ use failure::Error;
 use reqwest::Url;
 use std::collections::HashMap;
 
-use crate::map_result;
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
 use crate::row_index_trait::RowIndexTrait;
@@ -110,8 +109,7 @@ impl Podcast {
                 castid, castname, feedurl, directory
             FROM podcasts
         "#;
-        let results: Vec<Result<_, Error>> = pool
-            .get()?
+        pool.get()?
             .query(query, &[])?
             .iter()
             .map(|row| {
@@ -128,9 +126,7 @@ impl Podcast {
                 };
                 Ok(pod)
             })
-            .collect();
-
-        map_result(results)
+            .collect()
     }
 
     pub fn get_max_castid(pool: &PgPool) -> Result<i32, Error> {

@@ -12,28 +12,9 @@ pub mod podcatch_opts;
 pub mod row_index_trait;
 
 use checksums::{hash_file, Algorithm};
-use failure::{err_msg, Error};
+use failure::Error;
 use std::fs::File;
-use std::iter::FromIterator;
 use std::path::Path;
-
-pub fn map_result<T, U, V>(input: U) -> Result<V, Error>
-where
-    U: IntoIterator<Item = Result<T, Error>>,
-    V: FromIterator<T>,
-{
-    let (output, errors): (Vec<_>, Vec<_>) = input.into_iter().partition(Result::is_ok);
-    if !errors.is_empty() {
-        let errors: Vec<_> = errors
-            .into_iter()
-            .filter_map(Result::err)
-            .map(|x| x.to_string())
-            .collect();
-        Err(err_msg(errors.join("\n")))
-    } else {
-        Ok(output.into_iter().filter_map(Result::ok).collect())
-    }
-}
 
 pub fn get_md5sum(path: &Path) -> Result<String, Error> {
     {
