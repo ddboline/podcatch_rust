@@ -161,7 +161,7 @@ impl ExponentialRetry for PodConnection {
 mod tests {
     use std::collections::HashMap;
     use std::fs::remove_file;
-    use url::Url;
+    use reqwest::Url;
 
     use crate::config::Config;
     use crate::episode::Episode;
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_pod_connection_get() {
-        let config = Config::new().init_config().unwrap();
+        let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
         let pod = Podcast::from_index(&pool, 1).unwrap().unwrap();
         let url: Url = pod.feedurl.parse().unwrap();
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_pod_connection_parse_feed() {
-        let config = Config::new().init_config().unwrap();
+        let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
         let current_episodes = Episode::get_all_episodes(&pool, 1).unwrap();
         let max_epid = current_episodes

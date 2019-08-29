@@ -318,7 +318,7 @@ mod tests {
 
     #[test]
     fn test_episodes_get_all_episodes() {
-        let config = Config::new().init_config().unwrap();
+        let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
 
         let eps = Episode::get_all_episodes(&pool, 1).unwrap();

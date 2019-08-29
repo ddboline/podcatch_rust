@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_podcasts_from_index() {
-        let config = Config::new().init_config().unwrap();
+        let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
         let p = Podcast::from_index(&pool, 19).unwrap().unwrap();
         println!("{:?}", p);
@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_podcasts_from_feedurl() {
-        let config = Config::new().init_config().unwrap();
+        let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
         let p = Podcast::from_feedurl(&pool, "http://nightvale.libsyn.com/rss")
             .unwrap()
