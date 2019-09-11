@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reqwest::Url;
@@ -145,7 +145,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                                 let path = Path::new(&outfile);
                                 if path.exists() {
                                     let l = upload_list_of_mp3s(config, &[path.to_path_buf()])
-                                        .map_err(|e| err_msg(format!("{:?}", e)))?;
+                                        .map_err(|e| format_err!("{:?}", e))?;
                                     writeln!(stdout.lock(), "ids {:?}", l)?;
                                 }
                             }

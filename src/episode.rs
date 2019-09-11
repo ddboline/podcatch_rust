@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use failure::{err_msg, format_err, Error};
 use log::debug;
 use reqwest::Url;
 use std::fmt;
@@ -40,7 +40,7 @@ impl FromStr for EpisodeStatus {
             "Downloaded" => Ok(EpisodeStatus::Downloaded),
             "Error" => Ok(EpisodeStatus::Error),
             "Skipped" => Ok(EpisodeStatus::Skipped),
-            _ => Err(err_msg(format!("Invalid string {}", s))),
+            _ => Err(format_err!("Invalid string {}", s)),
         }
     }
 }
@@ -286,7 +286,7 @@ impl Episode {
         directory: &str,
     ) -> Result<Episode, Error> {
         if !Path::new(directory).exists() {
-            Err(err_msg(format!("No such directory {}", directory)))
+            Err(format_err!("No such directory {}", directory))
         } else if let Ok(url) = self.epurl.parse() {
             let outfile = format!("{}/{}", directory, self.url_basename()?);
             if Path::new(&outfile).exists() {
@@ -305,7 +305,7 @@ impl Episode {
                 Err(err_msg("Download failed"))
             }
         } else {
-            Err(err_msg(format!("Unkown failure {:?}", self)))
+            Err(format_err!("Unkown failure {:?}", self))
         }
     }
 }

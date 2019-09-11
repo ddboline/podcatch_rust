@@ -2,7 +2,7 @@ use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
     PyTuple, Python, PythonObject, ToPyObject,
 };
-use failure::{err_msg, Error};
+use failure::{format_err, Error};
 use id3::Tag;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -328,8 +328,7 @@ pub fn run_google_music(
                     Ok(p.to_path_buf())
                 })
                 .collect();
-            let ids =
-                upload_list_of_mp3s(config, &flist?).map_err(|e| err_msg(format!("{:?}", e)))?;
+            let ids = upload_list_of_mp3s(config, &flist?).map_err(|e| format_err!("{:?}", e))?;
             for id in ids {
                 if let Some(id) = id {
                     writeln!(stdout().lock(), "upload {}", id)?;
@@ -340,7 +339,7 @@ pub fn run_google_music(
     }
 
     let results: Result<Vec<_>, Error> = get_uploaded_mp3(config)
-        .map_err(|e| err_msg(format!("{:?}", e)))?
+        .map_err(|e| format_err!("{:?}", e))?
         .into_par_iter()
         .map(|mut m| {
             if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool)? {
@@ -539,7 +538,7 @@ pub fn run_google_music(
             }
         }
     } else if do_add {
-        upload_list_of_mp3s(config, &not_in_metadata).map_err(|e| err_msg(format!("{:?}", e)))?;
+        upload_list_of_mp3s(config, &not_in_metadata).map_err(|e| format_err!("{:?}", e))?;
     }
 
     Ok(())

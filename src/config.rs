@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use failure::{format_err, Error};
 use std::env::var;
 use std::ops::Deref;
 use std::path::Path;
@@ -40,7 +40,7 @@ impl Config {
     }
 
     pub fn init_config() -> Result<Config, Error> {
-        let home_dir = var("HOME").map_err(|e| err_msg(format!("No HOME Directory {}", e)))?;
+        let home_dir = var("HOME").map_err(|e| format_err!("No HOME Directory {}", e))?;
 
         let env_file = format!("{}/.config/podcatch_rust/config.env", home_dir);
 

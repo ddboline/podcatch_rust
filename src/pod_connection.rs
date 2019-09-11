@@ -159,9 +159,9 @@ impl ExponentialRetry for PodConnection {
 
 #[cfg(test)]
 mod tests {
+    use reqwest::Url;
     use std::collections::HashMap;
     use std::fs::remove_file;
-    use reqwest::Url;
 
     use crate::config::Config;
     use crate::episode::Episode;
