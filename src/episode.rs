@@ -70,8 +70,8 @@ impl Episode {
                 .to_lowercase()
                 .chars()
                 .filter_map(|c| match c {
-                    'a'...'z' => Some(c),
-                    '0'...'9' => Some(c),
+                    'a'..='z' => Some(c),
+                    '0'..='9' => Some(c),
                     ' ' => Some('_'),
                     _ => None,
                 })
