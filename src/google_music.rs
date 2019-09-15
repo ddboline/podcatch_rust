@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
     PyTuple, Python, PythonObject, ToPyObject,
@@ -7,6 +6,7 @@ use failure::{format_err, Error};
 use id3::Tag;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{stdout, BufRead, BufReader, Write};

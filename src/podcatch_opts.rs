@@ -1,5 +1,4 @@
 use failure::{err_msg, format_err, Error};
-use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reqwest::Url;
 use std::collections::HashMap;
@@ -49,14 +48,15 @@ impl PodcatchOpts {
                 opts.do_add,
                 &pool,
             )?;
+            process_all_podcasts(&pool, &config)?;
         } else if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid)? {
-                    debug!("{:?}", eps);
+                    writeln!(stdout().lock(), "{:?}", eps)?;
                 }
             } else {
                 for pod in &Podcast::get_all_podcasts(&pool)? {
-                    debug!("{:?}", pod);
+                    writeln!(stdout().lock(), "{:?}", pod)?;
                 }
             }
         } else if opts.do_add {
@@ -70,7 +70,13 @@ impl PodcatchOpts {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
                         format!("{}/{}", home_dir, podcast_name)
                     });
-                    debug!("Add {} {:?} {}", podcast_name, podcast_url, castid);
+                    writeln!(
+                        stdout().lock(),
+                        "Add {} {:?} {}",
+                        podcast_name,
+                        podcast_url,
+                        castid
+                    )?;
                     Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory)?;
                 }
             }
