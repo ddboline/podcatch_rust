@@ -42,13 +42,13 @@ impl PodcatchOpts {
         let pool = PgPool::new(&config.database_url);
 
         if opts.do_google_music {
+            process_all_podcasts(&pool, &config)?;
             run_google_music(
                 &config,
                 opts.filename.as_ref().map(String::as_str),
                 opts.do_add,
                 &pool,
             )?;
-            process_all_podcasts(&pool, &config)?;
         } else if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid)? {
