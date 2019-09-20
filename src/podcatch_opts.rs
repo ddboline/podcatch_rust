@@ -88,113 +88,116 @@ impl PodcatchOpts {
 }
 
 fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
-    let podcasts = Podcast::get_all_podcasts(&pool)?;
     let pod_conn = PodConnection::new();
-    for pod in &podcasts {
-        let episodes = Episode::get_all_episodes(&pool, pod.castid)?;
-        let max_epid = Episode::get_max_epid(&pool)?;
+    Podcast::get_all_podcasts(&pool)?
+        .into_par_iter()
+        .map(|pod| {
+            let episodes = Episode::get_all_episodes(&pool, pod.castid)?;
+            let max_epid = Episode::get_max_epid(&pool)?;
 
-        let results: Result<HashMap<String, Episode>, Error> = episodes
-            .into_iter()
-            .map(|e| {
-                let basename = e.url_basename()?;
-                Ok((basename, e))
-            })
-            .collect();
+            let results: Result<HashMap<String, Episode>, Error> = episodes
+                .into_iter()
+                .map(|e| {
+                    let basename = e.url_basename()?;
+                    Ok((basename, e))
+                })
+                .collect();
 
-        let episode_map = results?;
+            let episode_map = results?;
 
-        let episode_list = pod_conn.parse_feed(&pod, &episode_map, max_epid + 1)?;
+            let episode_list = pod_conn.parse_feed(&pod, &episode_map, max_epid + 1)?;
 
-        let new_episodes: Vec<_> = episode_list
-            .iter()
-            .filter(|e| e.status == EpisodeStatus::Ready)
-            .collect();
-        let update_episodes: Vec<_> = episode_list
-            .iter()
-            .filter(|e| e.status != EpisodeStatus::Ready)
-            .collect();
+            let new_episodes: Vec<_> = episode_list
+                .iter()
+                .filter(|e| e.status == EpisodeStatus::Ready)
+                .collect();
+            let update_episodes: Vec<_> = episode_list
+                .iter()
+                .filter(|e| e.status != EpisodeStatus::Ready)
+                .collect();
 
-        let stdout = stdout();
+            let stdout = stdout();
 
-        writeln!(
-            stdout.lock(),
-            "{} {} {} {} {}",
-            pod.castname,
-            max_epid,
-            episode_map.len(),
-            new_episodes.len(),
-            update_episodes.len(),
-        )?;
+            writeln!(
+                stdout.lock(),
+                "{} {} {} {} {}",
+                pod.castname,
+                max_epid,
+                episode_map.len(),
+                new_episodes.len(),
+                update_episodes.len(),
+            )?;
 
-        let results: Result<Vec<_>, Error> = new_episodes
-            .into_par_iter()
-            .map(|epi| {
-                if let Some(directory) = pod.directory.as_ref() {
-                    writeln!(
-                        stdout.lock(),
-                        "new download {} {} {}",
-                        epi.epurl,
-                        directory,
-                        epi.url_basename()?
-                    )?;
-                    if let Some(mut new_epi) = Episode::from_epurl(&pool, pod.castid, &epi.epurl)? {
-                        writeln!(stdout.lock(), "new title {}", epi.title)?;
-                        new_epi.title = epi.title.to_string();
-                        new_epi.update_episode(&pool)?;
-                    } else {
-                        let new_epi = epi.download_episode(&pod_conn, directory)?;
-                        if new_epi.epguid.is_some() {
-                            new_epi.insert_episode(&pool)?;
-                            if directory.contains(&config.google_music_directory) {
-                                let outfile = format!("{}/{}", directory, new_epi.url_basename()?);
-                                let path = Path::new(&outfile);
-                                if path.exists() {
-                                    let l = upload_list_of_mp3s(config, &[path.to_path_buf()])
-                                        .map_err(|e| format_err!("{:?}", e))?;
-                                    writeln!(stdout.lock(), "ids {:?}", l)?;
-                                }
-                            }
-                        } else {
-                            writeln!(stdout.lock(), "No md5sum? {:?}", new_epi)?;
-                        }
-                    }
-                }
-                Ok(())
-            })
-            .collect();
-
-        results?;
-
-        let results: Result<Vec<_>, Error> = update_episodes
-            .into_par_iter()
-            .map(|epi| {
-                let url = epi.url_basename()?;
-                let epguid = epi.epguid.as_ref().ok_or_else(|| err_msg("no md5sum"))?;
-                if epguid.len() != 32 {
+            let results: Result<Vec<_>, Error> = new_episodes
+                .into_par_iter()
+                .map(|epi| {
                     if let Some(directory) = pod.directory.as_ref() {
-                        let fname = format!("{}/{}", directory, url);
-                        let path = Path::new(&fname);
-                        if path.exists() {
-                            if let Ok(md5sum) = get_md5sum(&path) {
-                                let mut p = epi.clone();
-                                writeln!(stdout.lock(), "update md5sum {} {}", fname, md5sum)?;
-                                p.epguid = Some(md5sum);
-                                p.update_episode(&pool)?;
-                            }
-                        } else if let Ok(url_) = epi.epurl.parse::<Url>() {
-                            writeln!(stdout.lock(), "download {:?} {}", url_, fname)?;
-                            let new_epi = epi.download_episode(&pod_conn, directory)?;
+                        writeln!(
+                            stdout.lock(),
+                            "new download {} {} {}",
+                            epi.epurl,
+                            directory,
+                            epi.url_basename()?
+                        )?;
+                        if let Some(mut new_epi) =
+                            Episode::from_epurl(&pool, pod.castid, &epi.epurl)?
+                        {
+                            writeln!(stdout.lock(), "new title {}", epi.title)?;
+                            new_epi.title = epi.title.to_string();
                             new_epi.update_episode(&pool)?;
+                        } else {
+                            let new_epi = epi.download_episode(&pod_conn, directory)?;
+                            if new_epi.epguid.is_some() {
+                                new_epi.insert_episode(&pool)?;
+                                if directory.contains(&config.google_music_directory) {
+                                    let outfile =
+                                        format!("{}/{}", directory, new_epi.url_basename()?);
+                                    let path = Path::new(&outfile);
+                                    if path.exists() {
+                                        let l = upload_list_of_mp3s(config, &[path.to_path_buf()])
+                                            .map_err(|e| format_err!("{:?}", e))?;
+                                        writeln!(stdout.lock(), "ids {:?}", l)?;
+                                    }
+                                }
+                            } else {
+                                writeln!(stdout.lock(), "No md5sum? {:?}", new_epi)?;
+                            }
                         }
                     }
-                } else {
-                    writeln!(stdout.lock(), "{:?}", epi)?;
-                }
-                Ok(())
-            })
-            .collect();
-        results?;
-    }
-    Ok(())
+                    Ok(())
+                })
+                .collect();
+
+            results?;
+
+            update_episodes
+                .into_par_iter()
+                .map(|epi| {
+                    let url = epi.url_basename()?;
+                    let epguid = epi.epguid.as_ref().ok_or_else(|| err_msg("no md5sum"))?;
+                    if epguid.len() != 32 {
+                        if let Some(directory) = pod.directory.as_ref() {
+                            let fname = format!("{}/{}", directory, url);
+                            let path = Path::new(&fname);
+                            if path.exists() {
+                                if let Ok(md5sum) = get_md5sum(&path) {
+                                    let mut p = epi.clone();
+                                    writeln!(stdout.lock(), "update md5sum {} {}", fname, md5sum)?;
+                                    p.epguid = Some(md5sum);
+                                    p.update_episode(&pool)?;
+                                }
+                            } else if let Ok(url_) = epi.epurl.parse::<Url>() {
+                                writeln!(stdout.lock(), "download {:?} {}", url_, fname)?;
+                                let new_epi = epi.download_episode(&pod_conn, directory)?;
+                                new_epi.update_episode(&pool)?;
+                            }
+                        }
+                    } else {
+                        writeln!(stdout.lock(), "{:?}", epi)?;
+                    }
+                    Ok(())
+                })
+                .collect()
+        })
+        .collect()
 }

@@ -80,8 +80,7 @@ impl GoogleMusicMetadata {
                 &self.total_disc_count,
                 &self.filename,
             ],
-        )?;
-        Ok(())
+        ).map(|_| ()).map_err(err_msg)
     }
 
     pub fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
@@ -105,8 +104,7 @@ impl GoogleMusicMetadata {
                 &self.total_disc_count,
                 &self.filename,
             ],
-        )?;
-        Ok(())
+        ).map(|_| ()).map_err(err_msg)
     }
 
     pub fn by_id(id: &str, pool: &PgPool) -> Result<Option<GoogleMusicMetadata>, Error> {
