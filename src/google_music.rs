@@ -2,7 +2,7 @@ use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
     PyTuple, Python, PythonObject, ToPyObject,
 };
-use failure::{format_err, Error};
+use failure::{err_msg, format_err, Error};
 use id3::Tag;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -66,21 +66,24 @@ impl GoogleMusicMetadata {
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         "#;
-        pool.get()?.execute(
-            query,
-            &[
-                &self.id,
-                &self.title,
-                &self.album,
-                &self.artist,
-                &self.track_size,
-                &self.album_artist,
-                &self.track_number,
-                &self.disc_number,
-                &self.total_disc_count,
-                &self.filename,
-            ],
-        ).map(|_| ()).map_err(err_msg)
+        pool.get()?
+            .execute(
+                query,
+                &[
+                    &self.id,
+                    &self.title,
+                    &self.album,
+                    &self.artist,
+                    &self.track_size,
+                    &self.album_artist,
+                    &self.track_number,
+                    &self.disc_number,
+                    &self.total_disc_count,
+                    &self.filename,
+                ],
+            )
+            .map(|_| ())
+            .map_err(err_msg)
     }
 
     pub fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
@@ -90,21 +93,24 @@ impl GoogleMusicMetadata {
                 filename=$10
             WHERE id=$1 AND title=$2 AND album=$3 AND artist=$4
         "#;
-        pool.get()?.execute(
-            query,
-            &[
-                &self.id,
-                &self.title,
-                &self.album,
-                &self.artist,
-                &self.track_size,
-                &self.album_artist,
-                &self.track_number,
-                &self.disc_number,
-                &self.total_disc_count,
-                &self.filename,
-            ],
-        ).map(|_| ()).map_err(err_msg)
+        pool.get()?
+            .execute(
+                query,
+                &[
+                    &self.id,
+                    &self.title,
+                    &self.album,
+                    &self.artist,
+                    &self.track_size,
+                    &self.album_artist,
+                    &self.track_number,
+                    &self.disc_number,
+                    &self.total_disc_count,
+                    &self.filename,
+                ],
+            )
+            .map(|_| ())
+            .map_err(err_msg)
     }
 
     pub fn by_id(id: &str, pool: &PgPool) -> Result<Option<GoogleMusicMetadata>, Error> {
@@ -291,22 +297,21 @@ pub fn upload_list_of_mp3s(config: &Config, filelist: &[PathBuf]) -> PyResult<Ve
     )?;
     let mut results = Vec::new();
     for p in filelist {
-        if let Some(s) = p.to_str() {
-            debug!("upload {}", s);
-            let fname = PyString::new(py, s);
-            let result: PyObject =
-                mm.call_method(py, "upload", PyTuple::new(py, &[fname.into_object()]), None)?;
-            let result = PyDict::extract(py, &result)?;
-            let id = match result.get_item(py, "song_id") {
-                Some(s) => {
-                    let id = PyString::extract(py, &s)?.to_string(py)?.to_string();
-                    let output = format!("{} {}", s, id);
-                    Some(output)
-                }
-                None => None,
-            };
-            results.push(id);
-        }
+        let s = p.to_string_lossy();
+        debug!("upload {}", s);
+        let fname = PyString::new(py, &s);
+        let result: PyObject =
+            mm.call_method(py, "upload", PyTuple::new(py, &[fname.into_object()]), None)?;
+        let result = PyDict::extract(py, &result)?;
+        let id = match result.get_item(py, "song_id") {
+            Some(s) => {
+                let id = PyString::extract(py, &s)?.to_string(py)?.to_string();
+                let output = format!("{} {}", s, id);
+                Some(output)
+            }
+            None => None,
+        };
+        results.push(id);
     }
     Ok(results)
 }
@@ -392,10 +397,9 @@ pub fn run_google_music(
         .filter(|entry| entry.file_type().is_file())
         .filter_map(|entry| {
             let p = entry.into_path();
-            if let Some(s) = p.to_str() {
-                if filename_map.contains_key(s) {
-                    return None;
-                }
+            let s = p.to_string_lossy().to_string();
+            if filename_map.contains_key(&s) {
+                return None;
             }
             Some(p)
         })
@@ -418,16 +422,14 @@ pub fn run_google_music(
             if has_tag.contains_key(path) {
                 None
             } else {
-                if let Some(title) = path.file_name().and_then(|s| s.to_str()) {
-                    if let Some(items) = title_db_map.get(title) {
+                if let Some(title) = path.file_name().map(|f| f.to_string_lossy().to_string()) {
+                    if let Some(items) = title_db_map.get(&title) {
                         if items.len() == 1 {
-                            if let Some(m) = title_map.get(title) {
+                            if let Some(m) = title_map.get(&title) {
                                 if m.filename.is_none() {
-                                    if let Some(s) = path.to_str() {
-                                        let mut m = (*(*m)).clone();
-                                        m.filename.replace(s.to_string());
-                                        m.update_db(&pool).unwrap();
-                                    }
+                                    let mut m = (*(*m)).clone();
+                                    m.filename.replace(path.to_string_lossy().to_string());
+                                    m.update_db(&pool).unwrap();
                                 }
                             }
                         } else {
@@ -457,12 +459,10 @@ pub fn run_google_music(
                             track_number: t.track().map(|x| x as i32),
                         };
                         if let Some(m) = key_map.get(&k) {
-                            if let Some(s) = p.to_str() {
-                                if m.filename.is_none() {
-                                    let mut m = (*(*m)).clone();
-                                    m.filename.replace(s.to_string());
-                                    m.update_db(&pool).unwrap();
-                                }
+                            if m.filename.is_none() {
+                                let mut m = (*(*m)).clone();
+                                m.filename.replace(p.to_string_lossy().to_string());
+                                m.update_db(&pool).unwrap();
                             }
                             return Some((k, p));
                         }
@@ -481,11 +481,9 @@ pub fn run_google_music(
                     if items.len() == 1 {
                         if let Some(m) = title_map.get(title) {
                             if m.filename.is_none() {
-                                if let Some(s) = p.to_str() {
-                                    let mut m = (*(*m)).clone();
-                                    m.filename.replace(s.to_string());
-                                    m.update_db(&pool).unwrap();
-                                }
+                                let mut m = (*(*m)).clone();
+                                m.filename.replace(p.to_string_lossy().to_string());
+                                m.update_db(&pool).unwrap();
                             }
                         }
                     } else {
@@ -532,9 +530,7 @@ pub fn run_google_music(
     if let Some(fname) = filename {
         let mut f = File::create(fname)?;
         for p in not_in_metadata {
-            if let Some(s) = p.to_str() {
-                writeln!(f, "{}", s)?;
-            }
+            writeln!(f, "{}", p.to_string_lossy())?;
         }
     } else if do_add {
         upload_list_of_mp3s(config, &not_in_metadata).map_err(|e| format_err!("{:?}", e))?;
