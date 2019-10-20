@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.1.17"
+version = "0.1.18"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -25,7 +25,7 @@ serde_json = "1.0"
 cpython = "0.3"
 log = "0.4"
 env_logger = "0.6"
-
+retry = "0.5"
 
 [[bin]]
 name = "podcatch-rust"
