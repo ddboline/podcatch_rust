@@ -95,7 +95,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
             let episodes = Episode::get_all_episodes(&pool, pod.castid)?;
             let max_epid = Episode::get_max_epid(&pool)?;
 
-            let results: Result<HashMap<String, Episode>, Error> = episodes
+            let episode_map: Result<HashMap<String, Episode>, Error> = episodes
                 .into_iter()
                 .map(|e| {
                     let basename = e.url_basename()?;
@@ -103,7 +103,7 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                 })
                 .collect();
 
-            let episode_map = results?;
+            let episode_map = episode_map?;
 
             let episode_list = pod_conn.parse_feed(&pod, &episode_map, max_epid + 1)?;
 

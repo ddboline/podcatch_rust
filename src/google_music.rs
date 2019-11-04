@@ -342,7 +342,7 @@ pub fn run_google_music(
         }
     }
 
-    let results: Result<Vec<_>, Error> = get_uploaded_mp3(config)
+    let metadata: Result<Vec<_>, Error> = get_uploaded_mp3(config)
         .map_err(|e| format_err!("{:?}", e))?
         .into_par_iter()
         .map(|mut m| {
@@ -355,7 +355,7 @@ pub fn run_google_music(
         })
         .collect();
 
-    let metadata = results?;
+    let metadata = metadata?;
 
     let filename_map: HashMap<String, _> = metadata
         .par_iter()
@@ -366,7 +366,7 @@ pub fn run_google_music(
 
     let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.to_string(), m)).collect();
 
-    let results: Result<HashMap<_, _>, Error> = title_map
+    let title_db_map: Result<HashMap<_, _>, Error> = title_map
         .keys()
         .map(|t| {
             let items = GoogleMusicMetadata::by_title(t, &pool)?;
@@ -374,7 +374,7 @@ pub fn run_google_music(
         })
         .collect();
 
-    let title_db_map = results?;
+    let title_db_map = title_db_map?;
 
     let key_map: HashMap<_, _> = metadata
         .iter()
