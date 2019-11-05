@@ -5,7 +5,9 @@ use cpython::{
 use failure::{err_msg, format_err, Error};
 use id3::Tag;
 use log::debug;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{
+    IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
@@ -261,7 +263,11 @@ fn exception(py: Python, msg: &str) -> PyErr {
     PyErr::new::<exc::Exception, _>(py, msg)
 }
 
-pub fn get_uploaded_mp3(config: &Config) -> PyResult<Vec<GoogleMusicMetadata>> {
+pub fn get_uploaded_mp3(config: &Config) -> Result<Vec<GoogleMusicMetadata>, Error> {
+    _get_uploaded_mp3(config).map_err(|e| format_err!("{:?}", e))
+}
+
+fn _get_uploaded_mp3(config: &Config) -> PyResult<Vec<GoogleMusicMetadata>> {
     let gil = Python::acquire_gil();
     let py = gil.python();
     let google_music = py.import("google_music")?;
@@ -318,6 +324,7 @@ pub fn upload_list_of_mp3s(config: &Config, filelist: &[PathBuf]) -> PyResult<Ve
 
 pub fn run_google_music(
     config: &Config,
+    metadata: &mut [GoogleMusicMetadata],
     filename: Option<&str>,
     do_add: bool,
     pool: &PgPool,
@@ -342,9 +349,8 @@ pub fn run_google_music(
         }
     }
 
-    let metadata: Result<Vec<_>, Error> = get_uploaded_mp3(config)
-        .map_err(|e| format_err!("{:?}", e))?
-        .into_par_iter()
+    let metadata: Result<Vec<_>, Error> = metadata
+        .par_iter_mut()
         .map(|mut m| {
             if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool)? {
                 m.filename = m_.filename;

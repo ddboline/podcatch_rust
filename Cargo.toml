@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.1.18"
+version = "0.1.19"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -26,6 +26,7 @@ cpython = "0.3"
 log = "0.4"
 env_logger = "0.7"
 retry = "0.5"
+crossbeam-utils = "0.6"
 
 [[bin]]
 name = "podcatch-rust"

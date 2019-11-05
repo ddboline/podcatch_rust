@@ -1,3 +1,4 @@
+use crossbeam_utils::thread;
 use failure::{err_msg, format_err, Error};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reqwest::Url;
@@ -9,7 +10,7 @@ use structopt::StructOpt;
 use crate::config::Config;
 use crate::episode::{Episode, EpisodeStatus};
 use crate::get_md5sum;
-use crate::google_music::{run_google_music, upload_list_of_mp3s};
+use crate::google_music::{get_uploaded_mp3, run_google_music, upload_list_of_mp3s};
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
 use crate::podcast::Podcast;
@@ -42,13 +43,20 @@ impl PodcatchOpts {
         let pool = PgPool::new(&config.database_url);
 
         if opts.do_google_music {
-            process_all_podcasts(&pool, &config)?;
-            run_google_music(
-                &config,
-                opts.filename.as_ref().map(String::as_str),
-                opts.do_add,
-                &pool,
-            )?;
+            thread::scope(|s| {
+                let t = s.spawn(|_| get_uploaded_mp3(&config));
+                process_all_podcasts(&pool, &config)?;
+                let mut metadata = t.join().expect("get_uploaded_mp3 paniced")?;
+                run_google_music(
+                    &config,
+                    &mut metadata,
+                    opts.filename.as_ref().map(String::as_str),
+                    opts.do_add,
+                    &pool,
+                )?;
+                Ok(())
+            })
+            .expect("scoped thread panic")
         } else if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid)? {
@@ -59,6 +67,7 @@ impl PodcatchOpts {
                     writeln!(stdout().lock(), "{:?}", pod)?;
                 }
             }
+            Ok(())
         } else if opts.do_add {
             if let Some(podcast_name) = opts.podcast_name.as_ref() {
                 if let Some(podcast_url) = opts.podcast_url.as_ref() {
@@ -80,10 +89,10 @@ impl PodcatchOpts {
                     Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory)?;
                 }
             }
+            Ok(())
         } else {
-            process_all_podcasts(&pool, &config)?;
+            process_all_podcasts(&pool, &config)
         }
-        Ok(())
     }
 }
 
