@@ -170,7 +170,7 @@ mod tests {
     use crate::pod_connection::PodConnection;
     use crate::podcast::Podcast;
 
-    #[test]
+    #[test] #[ignore]
     fn test_pod_connection_get() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
@@ -183,7 +183,7 @@ mod tests {
         assert!(text.starts_with("<?xml"));
     }
 
-    #[test]
+    #[test] #[ignore]
     fn test_pod_connection_parse_feed() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);

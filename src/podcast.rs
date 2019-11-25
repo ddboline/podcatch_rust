@@ -144,7 +144,7 @@ mod tests {
     use crate::pgpool::PgPool;
     use crate::podcast::Podcast;
 
-    #[test]
+    #[test] #[ignore]
     fn test_podcasts_from_index() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
@@ -160,7 +160,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[test] #[ignore]
     fn test_podcasts_from_feedurl() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);

@@ -316,7 +316,7 @@ mod tests {
     use crate::episode::Episode;
     use crate::pgpool::PgPool;
 
-    #[test]
+    #[test] #[ignore]
     fn test_episodes_get_all_episodes() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
