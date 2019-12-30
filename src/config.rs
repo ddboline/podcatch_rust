@@ -22,13 +22,13 @@ impl ConfigInner {
     pub fn from_env() -> ConfigInner {
         let mut conf = ConfigInner::default();
         if let Ok(database_url) = var("DATABASE_URL") {
-            conf.database_url = database_url.to_string();
+            conf.database_url = database_url;
         }
         if let Ok(google_music_directory) = var("GOOGLE_MUSIC_DIRECTORY") {
-            conf.google_music_directory = google_music_directory.to_string();
+            conf.google_music_directory = google_music_directory;
         }
         if let Ok(user) = var("USER") {
-            conf.user = user.to_string();
+            conf.user = user;
         }
         conf
     }

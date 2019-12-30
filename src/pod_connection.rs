@@ -42,7 +42,7 @@ impl PodConnection {
                     .unwrap_or_else(|| "Unknown".to_string()),
                 castid: podcast.castid,
                 episodeid: latest_epid,
-                epurl: epurl.to_string(),
+                epurl: (*epurl).to_string(),
                 enctype: enctype
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| "".to_string()),

@@ -105,7 +105,7 @@ impl Episode {
             FROM episodes
             WHERE castid = $1 AND episodeid = $2
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&cid, &eid])?.iter().nth(0) {
+        if let Some(row) = pool.get()?.query(query, &[&cid, &eid])?.get(0) {
             let castid: i32 = row.get_idx(0)?;
             let episodeid: i32 = row.get_idx(1)?;
             let title: String = row.get_idx(2)?;
@@ -136,7 +136,7 @@ impl Episode {
             FROM episodes
             WHERE castid = $1 AND epurl = $2
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&cid, &epurl])?.iter().nth(0) {
+        if let Some(row) = pool.get()?.query(query, &[&cid, &epurl])?.get(0) {
             let castid: i32 = row.get_idx(0)?;
             let episodeid: i32 = row.get_idx(1)?;
             let title: String = row.get_idx(2)?;
@@ -167,7 +167,7 @@ impl Episode {
             FROM episodes
             WHERE castid = $1 AND epguid = $2
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&cid, &epguid])?.iter().nth(0) {
+        if let Some(row) = pool.get()?.query(query, &[&cid, &epguid])?.get(0) {
             let castid: i32 = row.get_idx(0)?;
             let episodeid: i32 = row.get_idx(1)?;
             let title: String = row.get_idx(2)?;
@@ -274,8 +274,7 @@ impl Episode {
         let query = "SELECT MAX(episodeid) FROM episodes";
         pool.get()?
             .query(query, &[])?
-            .iter()
-            .nth(0)
+            .get(0)
             .ok_or_else(|| err_msg("No episodes"))
             .and_then(|row| row.get_idx(0))
     }

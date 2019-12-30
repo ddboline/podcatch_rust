@@ -123,7 +123,7 @@ impl GoogleMusicMetadata {
             FROM google_music_metadata
             WHERE id=$1
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&id])?.iter().nth(0) {
+        if let Some(row) = pool.get()?.query(query, &[&id])?.get(0) {
             let id: String = row.get_idx(0)?;
             let title: String = row.get_idx(1)?;
             let album: String = row.get_idx(2)?;

@@ -1,7 +1,7 @@
 use failure::{err_msg, Error};
 use postgres::NoTls;
 use r2d2::{Pool, PooledConnection};
-use r2d2_postgres::{ PostgresConnectionManager};
+use r2d2_postgres::PostgresConnectionManager;
 use std::fmt;
 
 #[derive(Clone)]
@@ -18,8 +18,10 @@ impl fmt::Debug for PgPool {
 
 impl PgPool {
     pub fn new(pgurl: &str) -> PgPool {
-        let manager =
-            PostgresConnectionManager::new(pgurl.parse().expect("Failed to open DB connection"), NoTls);
+        let manager = PostgresConnectionManager::new(
+            pgurl.parse().expect("Failed to open DB connection"),
+            NoTls,
+        );
         PgPool {
             pgurl: pgurl.to_string(),
             pool: Pool::new(manager).expect("Failed to open DB connection"),

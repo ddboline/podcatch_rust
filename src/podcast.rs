@@ -55,7 +55,7 @@ impl Podcast {
             FROM podcasts
             WHERE castid = $1
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&cid])?.iter().nth(0) {
+        if let Some(row) = pool.get()?.query(query, &[&cid])?.get(0) {
             let castid: i32 = row.get_idx(0)?;
             let castname: String = row.get_idx(1)?;
             let feedurl: String = row.get_idx(2)?;
@@ -80,12 +80,7 @@ impl Podcast {
             FROM podcasts
             WHERE feedurl = $1
         "#;
-        if let Some(row) = pool
-            .get()?
-            .query(query, &[&feedurl.to_string()])?
-            .iter()
-            .nth(0)
-        {
+        if let Some(row) = pool.get()?.query(query, &[&feedurl.to_string()])?.get(0) {
             let castid: i32 = row.get_idx(0)?;
             let castname: String = row.get_idx(1)?;
             let feedurl: String = row.get_idx(2)?;
@@ -131,7 +126,7 @@ impl Podcast {
 
     pub fn get_max_castid(pool: &PgPool) -> Result<i32, Error> {
         let query = "SELECT MAX(castid) FROM podcasts";
-        match pool.get()?.query(query, &[])?.iter().nth(0) {
+        match pool.get()?.query(query, &[])?.get(0) {
             Some(row) => row.get_idx(0),
             None => Ok(0),
         }
