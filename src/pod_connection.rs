@@ -1,5 +1,6 @@
 use failure::{err_msg, Error};
-use reqwest::{Client, Url};
+use reqwest::blocking::Client;
+use reqwest::Url;
 use roxmltree::{Document, NodeType};
 use std::collections::HashMap;
 use std::fs::File;

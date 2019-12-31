@@ -10,7 +10,7 @@ r2d2 = "0.8"
 r2d2_postgres = "0.16"
 dotenv = "0.15"
 postgres = "0.17"
-reqwest = "0.9"
+reqwest = {version="0.10", features=["cookies", "blocking", "json"]}
 rand = "0.7"
 roxmltree = "0.8"
 checksums = "0.6"

@@ -1,6 +1,7 @@
 use failure::{format_err, Error};
 use log::error;
-use reqwest::{Client, Response, Url};
+use reqwest::blocking::{Client, Response};
+use reqwest::Url;
 use retry::{delay::jitter, delay::Exponential, retry};
 
 pub trait ExponentialRetry {
