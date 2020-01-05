@@ -179,7 +179,7 @@ mod tests {
         let pod = Podcast::from_index(&pool, 1).unwrap().unwrap();
         let url: Url = pod.feedurl.parse().unwrap();
         let conn = PodConnection::new();
-        let mut resp = conn.get(&url).unwrap();
+        let resp = conn.get(&url).unwrap();
         let text = resp.text().unwrap();
 
         assert!(text.starts_with("<?xml"));

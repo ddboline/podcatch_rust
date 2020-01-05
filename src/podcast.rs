@@ -108,6 +108,8 @@ impl Podcast {
 
 #[cfg(test)]
 mod tests {
+    use std::io::{stdout, Write};
+
     use crate::config::Config;
     use crate::pgpool::PgPool;
     use crate::podcast::Podcast;
@@ -118,7 +120,7 @@ mod tests {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
         let p = Podcast::from_index(&pool, 19).unwrap().unwrap();
-        println!("{:?}", p);
+        writeln!(stdout(), "{:?}", p).unwrap();
         assert_eq!(
             p.castname,
             "The Current Song of the Day - Minnesota Public Radio"
@@ -137,7 +139,7 @@ mod tests {
         let p = Podcast::from_feedurl(&pool, "http://nightvale.libsyn.com/rss")
             .unwrap()
             .unwrap();
-        println!("{:?}", p);
+        writeln!(stdout(), "{:?}", p).unwrap();
         assert_eq!(p.castid, 24);
         assert_eq!(p.castname, "Welcome to Night Vale");
     }
