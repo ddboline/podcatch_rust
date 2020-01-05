@@ -1,12 +1,12 @@
-use failure::Error;
+use failure::{err_msg, Error};
+use postgres_query::FromSqlRow;
 use reqwest::Url;
 use std::collections::HashMap;
 
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
-use crate::row_index_trait::RowIndexTrait;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, FromSqlRow)]
 pub struct Podcast {
     pub castid: i32,
     pub castname: String,
@@ -35,14 +35,17 @@ impl Podcast {
             };
             let episodes = PodConnection::new().parse_feed(&pod, &HashMap::new(), 0)?;
             assert!(!episodes.is_empty());
-            let query = r#"
-                INSERT INTO podcasts (castid, castname, feedurl, directory)
-                VALUES ($1,$2,$3,$4)
-            "#;
-            pool.get()?.execute(
-                query,
-                &[&pod.castid, &pod.castname, &pod.feedurl, &pod.directory],
-            )?;
+            let query = postgres_query::query!(
+                r#"
+                    INSERT INTO podcasts (castid, castname, feedurl, directory)
+                    VALUES ($castid,$castname,$feedurl,$directory)
+                "#,
+                castid = pod.castid,
+                castname = pod.castname,
+                feedurl = pod.feedurl,
+                directory = pod.directory
+            );
+            pool.get()?.execute(query.sql, &query.parameters)?;
             pod
         };
         Ok(pod)
@@ -56,17 +59,7 @@ impl Podcast {
             WHERE castid = $1
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid])?.get(0) {
-            let castid: i32 = row.get_idx(0)?;
-            let castname: String = row.get_idx(1)?;
-            let feedurl: String = row.get_idx(2)?;
-            let directory: Option<String> = row.get_idx(3)?;
-
-            let pod = Podcast {
-                castid,
-                castname,
-                feedurl,
-                directory,
-            };
+            let pod = Podcast::from_row(row)?;
             Ok(Some(pod))
         } else {
             Ok(None)
@@ -81,17 +74,7 @@ impl Podcast {
             WHERE feedurl = $1
         "#;
         if let Some(row) = pool.get()?.query(query, &[&feedurl.to_string()])?.get(0) {
-            let castid: i32 = row.get_idx(0)?;
-            let castname: String = row.get_idx(1)?;
-            let feedurl: String = row.get_idx(2)?;
-            let directory: Option<String> = row.get_idx(3)?;
-
-            let pod = Podcast {
-                castid,
-                castname,
-                feedurl,
-                directory,
-            };
+            let pod = Podcast::from_row(row)?;
             Ok(Some(pod))
         } else {
             Ok(None)
@@ -108,17 +91,7 @@ impl Podcast {
             .query(query, &[])?
             .iter()
             .map(|row| {
-                let castid: i32 = row.get_idx(0)?;
-                let castname: String = row.get_idx(1)?;
-                let feedurl: String = row.get_idx(2)?;
-                let directory: Option<String> = row.get_idx(3)?;
-
-                let pod = Podcast {
-                    castid,
-                    castname,
-                    feedurl,
-                    directory,
-                };
+                let pod = Podcast::from_row(row)?;
                 Ok(pod)
             })
             .collect()
@@ -127,7 +100,7 @@ impl Podcast {
     pub fn get_max_castid(pool: &PgPool) -> Result<i32, Error> {
         let query = "SELECT MAX(castid) FROM podcasts";
         match pool.get()?.query(query, &[])?.get(0) {
-            Some(row) => row.get_idx(0),
+            Some(row) => row.try_get(0).map_err(err_msg),
             None => Ok(0),
         }
     }

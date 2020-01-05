@@ -1,5 +1,6 @@
 use failure::{err_msg, format_err, Error};
 use log::debug;
+use postgres_query::FromSqlRow;
 use reqwest::Url;
 use std::fmt;
 use std::fs::remove_file;
@@ -9,7 +10,6 @@ use std::str::FromStr;
 use crate::get_md5sum;
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
-use crate::row_index_trait::RowIndexTrait;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EpisodeStatus {
@@ -62,6 +62,31 @@ pub struct Episode {
     pub epguid: Option<String>,
 }
 
+#[derive(FromSqlRow)]
+pub struct EpisodeDB {
+    pub castid: i32,
+    pub episodeid: i32,
+    pub title: String,
+    pub epurl: String,
+    pub enctype: String,
+    pub status: String,
+    pub epguid: Option<String>,
+}
+
+impl From<EpisodeDB> for Episode {
+    fn from(item: EpisodeDB) -> Self {
+        Self {
+            castid: item.castid,
+            episodeid: item.episodeid,
+            title: item.title,
+            epurl: item.epurl,
+            enctype: item.enctype,
+            status: item.status.parse().unwrap_or(EpisodeStatus::Ready),
+            epguid: item.epguid,
+        }
+    }
+}
+
 impl Episode {
     pub fn url_basename(&self) -> Result<String, Error> {
         if self.epurl.ends_with("media.mp3") {
@@ -106,23 +131,7 @@ impl Episode {
             WHERE castid = $1 AND episodeid = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &eid])?.get(0) {
-            let castid: i32 = row.get_idx(0)?;
-            let episodeid: i32 = row.get_idx(1)?;
-            let title: String = row.get_idx(2)?;
-            let epurl: String = row.get_idx(3)?;
-            let enctype: String = row.get_idx(4)?;
-            let status: String = row.get_idx(5)?;
-            let epguid: Option<String> = row.get_idx(6)?;
-
-            let ep = Episode {
-                castid,
-                episodeid,
-                title,
-                epurl,
-                enctype,
-                status: status.parse()?,
-                epguid,
-            };
+            let ep = EpisodeDB::from_row(row)?.into();
             Ok(Some(ep))
         } else {
             Ok(None)
@@ -137,23 +146,7 @@ impl Episode {
             WHERE castid = $1 AND epurl = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &epurl])?.get(0) {
-            let castid: i32 = row.get_idx(0)?;
-            let episodeid: i32 = row.get_idx(1)?;
-            let title: String = row.get_idx(2)?;
-            let epurl: String = row.get_idx(3)?;
-            let enctype: String = row.get_idx(4)?;
-            let status: String = row.get_idx(5)?;
-            let epguid: Option<String> = row.get_idx(6)?;
-
-            let ep = Episode {
-                castid,
-                episodeid,
-                title,
-                epurl,
-                enctype,
-                status: status.parse()?,
-                epguid,
-            };
+            let ep = EpisodeDB::from_row(row)?.into();
             Ok(Some(ep))
         } else {
             Ok(None)
@@ -168,23 +161,7 @@ impl Episode {
             WHERE castid = $1 AND epguid = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &epguid])?.get(0) {
-            let castid: i32 = row.get_idx(0)?;
-            let episodeid: i32 = row.get_idx(1)?;
-            let title: String = row.get_idx(2)?;
-            let epurl: String = row.get_idx(3)?;
-            let enctype: String = row.get_idx(4)?;
-            let status: String = row.get_idx(5)?;
-            let epguid: Option<String> = row.get_idx(6)?;
-
-            let ep = Episode {
-                castid,
-                episodeid,
-                title,
-                epurl,
-                enctype,
-                status: status.parse()?,
-                epguid,
-            };
+            let ep = EpisodeDB::from_row(row)?.into();
             Ok(Some(ep))
         } else {
             Ok(None)
@@ -202,71 +179,53 @@ impl Episode {
             .query(query, &[&cid])?
             .iter()
             .map(|row| {
-                let castid: i32 = row.get_idx(0)?;
-                let episodeid: i32 = row.get_idx(1)?;
-                let title: String = row.get_idx(2)?;
-                let epurl: String = row.get_idx(3)?;
-                let enctype: String = row.get_idx(4)?;
-                let status: String = row.get_idx(5)?;
-                let epguid: Option<String> = row.get_idx(6)?;
-
-                let ep = Episode {
-                    castid,
-                    episodeid,
-                    title,
-                    epurl,
-                    enctype,
-                    status: status.parse()?,
-                    epguid,
-                };
+                let ep = EpisodeDB::from_row(row)?.into();
                 Ok(ep)
             })
             .collect()
     }
 
     pub fn insert_episode(&self, pool: &PgPool) -> Result<u64, Error> {
-        let query = r#"
+        let status = self.status.to_string();
+        let query = postgres_query::query!(
+            r#"
             INSERT INTO episodes (
                 castid, episodeid, title, epurl, enctype, status, epguid
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7
+                $castid, $episodeid, $title, $epurl, $enctype, $status, $epguid
             )
-        "#;
+        "#,
+            castid = self.castid,
+            episodeid = self.episodeid,
+            title = self.title,
+            epurl = self.epurl,
+            enctype = self.enctype,
+            status = status,
+            epguid = self.epguid
+        );
         pool.get()?
-            .execute(
-                query,
-                &[
-                    &self.castid,
-                    &self.episodeid,
-                    &self.title,
-                    &self.epurl,
-                    &self.enctype,
-                    &self.status.to_string(),
-                    &self.epguid,
-                ],
-            )
+            .execute(query.sql, &query.parameters)
             .map_err(err_msg)
     }
 
     pub fn update_episode(&self, pool: &PgPool) -> Result<u64, Error> {
-        let query = r#"
-            UPDATE episodes
-            SET title=$3,epurl=$4,enctype=$5,status=$6,epguid=$7
-            WHERE castid=$1 AND episodeid=$2
-        "#;
+        let status = self.status.to_string();
+        let query = postgres_query::query!(
+            r#"
+                UPDATE episodes
+                SET title=$title,epurl=$epurl,enctype=$enctype,status=$status,epguid=$epguid
+                WHERE castid=$castid AND episodeid=$episodeid
+            "#,
+            castid = self.castid,
+            episodeid = self.episodeid,
+            title = self.title,
+            epurl = self.epurl,
+            enctype = self.enctype,
+            status = status,
+            epguid = self.epguid
+        );
         pool.get()?
-            .execute(
-                query,
-                &[
-                    &self.castid,
-                    &self.episodeid,
-                    &self.title,
-                    &self.epurl,
-                    &self.enctype,
-                    &self.status.to_string(),
-                    &self.epguid,
-                ],
-            )
+            .execute(query.sql, &query.parameters)
             .map_err(err_msg)
     }
 
@@ -276,7 +235,7 @@ impl Episode {
             .query(query, &[])?
             .get(0)
             .ok_or_else(|| err_msg("No episodes"))
-            .and_then(|row| row.get_idx(0))
+            .and_then(|row| row.try_get(0).map_err(err_msg))
     }
 
     pub fn download_episode(

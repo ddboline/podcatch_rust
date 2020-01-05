@@ -5,6 +5,7 @@ use cpython::{
 use failure::{err_msg, format_err, Error};
 use id3::Tag;
 use log::debug;
+use postgres_query::FromSqlRow;
 use rayon::iter::{
     IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
@@ -18,7 +19,6 @@ use walkdir::WalkDir;
 
 use crate::config::Config;
 use crate::pgpool::PgPool;
-use crate::row_index_trait::RowIndexTrait;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct MusicKey {
@@ -28,7 +28,7 @@ pub struct MusicKey {
     pub track_number: Option<i32>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, FromSqlRow)]
 pub struct GoogleMusicMetadata {
     pub id: String,
     pub title: String,
@@ -61,56 +61,53 @@ macro_rules! get_pydict_item {
 
 impl GoogleMusicMetadata {
     pub fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = r#"
+        let query = postgres_query::query!(
+            r#"
             INSERT INTO google_music_metadata (
                 id, title, album, artist, track_size, album_artist, track_number, disc_number,
                 total_disc_count, filename
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        "#;
+            VALUES ($id, $title, $album, $artist, $track_size, $album_artist, $track_number, $disc_number,
+                $total_disc_count, $filename)
+        "#,
+            id = self.id,
+            title = self.title,
+            album = self.album,
+            artist = self.artist,
+            track_size = self.track_size,
+            album_artist = self.album_artist,
+            track_number = self.track_number,
+            disc_number = self.disc_number,
+            total_disc_count = self.total_disc_count,
+            filename = self.filename
+        );
         pool.get()?
-            .execute(
-                query,
-                &[
-                    &self.id,
-                    &self.title,
-                    &self.album,
-                    &self.artist,
-                    &self.track_size,
-                    &self.album_artist,
-                    &self.track_number,
-                    &self.disc_number,
-                    &self.total_disc_count,
-                    &self.filename,
-                ],
-            )
+            .execute(query.sql, &query.parameters)
             .map(|_| ())
             .map_err(err_msg)
     }
 
     pub fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
-        let query = r#"
-            UPDATE google_music_metadata
-            SET track_size=$5,album_artist=$6,track_number=$7,disc_number=$8,total_disc_count=$9,
-                filename=$10
-            WHERE id=$1 AND title=$2 AND album=$3 AND artist=$4
-        "#;
+        let query = postgres_query::query!(
+            r#"
+                UPDATE google_music_metadata
+                SET track_size=$track_size,album_artist=$album_artist,track_number=$track_number,
+                    disc_number=$disc_number,total_disc_count=$total_disc_count,filename=$filename
+                WHERE id=$id AND title=$title AND album=$album AND artist=$artist
+            "#,
+            id = self.id,
+            title = self.title,
+            album = self.album,
+            artist = self.artist,
+            track_size = self.track_size,
+            album_artist = self.album_artist,
+            track_number = self.track_number,
+            disc_number = self.disc_number,
+            total_disc_count = self.total_disc_count,
+            filename = self.filename
+        );
         pool.get()?
-            .execute(
-                query,
-                &[
-                    &self.id,
-                    &self.title,
-                    &self.album,
-                    &self.artist,
-                    &self.track_size,
-                    &self.album_artist,
-                    &self.track_number,
-                    &self.disc_number,
-                    &self.total_disc_count,
-                    &self.filename,
-                ],
-            )
+            .execute(query.sql, &query.parameters)
             .map(|_| ())
             .map_err(err_msg)
     }
@@ -124,28 +121,7 @@ impl GoogleMusicMetadata {
             WHERE id=$1
         "#;
         if let Some(row) = pool.get()?.query(query, &[&id])?.get(0) {
-            let id: String = row.get_idx(0)?;
-            let title: String = row.get_idx(1)?;
-            let album: String = row.get_idx(2)?;
-            let artist: String = row.get_idx(3)?;
-            let track_size: i32 = row.get_idx(4)?;
-            let album_artist: Option<String> = row.get_idx(5)?;
-            let track_number: Option<i32> = row.get_idx(6)?;
-            let disc_number: Option<i32> = row.get_idx(7)?;
-            let total_disc_count: Option<i32> = row.get_idx(8)?;
-            let filename: Option<String> = row.get_idx(9)?;
-            let g = GoogleMusicMetadata {
-                id,
-                title,
-                album,
-                artist,
-                track_size,
-                album_artist,
-                track_number,
-                disc_number,
-                total_disc_count,
-                filename,
-            };
+            let g = GoogleMusicMetadata::from_row(row)?;
             Ok(Some(g))
         } else {
             Ok(None)
@@ -164,28 +140,7 @@ impl GoogleMusicMetadata {
             .query(query, &[&key.artist, &key.album, &key.title])?
             .iter()
             .map(|row| {
-                let id: String = row.get_idx(0)?;
-                let title: String = row.get_idx(1)?;
-                let album: String = row.get_idx(2)?;
-                let artist: String = row.get_idx(3)?;
-                let track_size: i32 = row.get_idx(4)?;
-                let album_artist: Option<String> = row.get_idx(5)?;
-                let track_number: Option<i32> = row.get_idx(6)?;
-                let disc_number: Option<i32> = row.get_idx(7)?;
-                let total_disc_count: Option<i32> = row.get_idx(8)?;
-                let filename: Option<String> = row.get_idx(9)?;
-                let g = GoogleMusicMetadata {
-                    id,
-                    title,
-                    album,
-                    artist,
-                    track_size,
-                    album_artist,
-                    track_number,
-                    disc_number,
-                    total_disc_count,
-                    filename,
-                };
+                let g = GoogleMusicMetadata::from_row(row)?;
                 Ok(g)
             })
             .collect()
@@ -203,28 +158,7 @@ impl GoogleMusicMetadata {
             .query(query, &[&title])?
             .iter()
             .map(|row| {
-                let id: String = row.get_idx(0)?;
-                let title: String = row.get_idx(1)?;
-                let album: String = row.get_idx(2)?;
-                let artist: String = row.get_idx(3)?;
-                let track_size: i32 = row.get_idx(4)?;
-                let album_artist: Option<String> = row.get_idx(5)?;
-                let track_number: Option<i32> = row.get_idx(6)?;
-                let disc_number: Option<i32> = row.get_idx(7)?;
-                let total_disc_count: Option<i32> = row.get_idx(8)?;
-                let filename: Option<String> = row.get_idx(9)?;
-                let g = GoogleMusicMetadata {
-                    id,
-                    title,
-                    album,
-                    artist,
-                    track_size,
-                    album_artist,
-                    track_number,
-                    disc_number,
-                    total_disc_count,
-                    filename,
-                };
+                let g = GoogleMusicMetadata::from_row(row)?;
                 Ok(g)
             })
             .collect()

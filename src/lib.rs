@@ -6,7 +6,6 @@ pub mod pgpool;
 pub mod pod_connection;
 pub mod podcast;
 pub mod podcatch_opts;
-pub mod row_index_trait;
 
 use checksums::{hash_file, Algorithm};
 use failure::Error;
