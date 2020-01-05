@@ -2,56 +2,15 @@ use failure::{err_msg, format_err, Error};
 use log::debug;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
-use std::fmt;
 use std::fs::remove_file;
 use std::path::Path;
-use std::str::FromStr;
 
+use crate::episode_status::EpisodeStatus;
 use crate::get_md5sum;
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum EpisodeStatus {
-    Ready,
-    Downloaded,
-    Error,
-    Skipped,
-}
-
-impl fmt::Display for EpisodeStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match self {
-            EpisodeStatus::Ready => "Ready",
-            EpisodeStatus::Downloaded => "Downloaded",
-            EpisodeStatus::Error => "Error",
-            EpisodeStatus::Skipped => "Skipped",
-        };
-        write!(f, "{}", s)
-    }
-}
-
-impl FromStr for EpisodeStatus {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Ready" => Ok(EpisodeStatus::Ready),
-            "Downloaded" => Ok(EpisodeStatus::Downloaded),
-            "Error" => Ok(EpisodeStatus::Error),
-            "Skipped" => Ok(EpisodeStatus::Skipped),
-            _ => Err(format_err!("Invalid string {}", s)),
-        }
-    }
-}
-
-impl Default for EpisodeStatus {
-    fn default() -> Self {
-        EpisodeStatus::Ready
-    }
-}
-
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, FromSqlRow)]
 pub struct Episode {
     pub castid: i32,
     pub episodeid: i32,
@@ -60,31 +19,6 @@ pub struct Episode {
     pub enctype: String,
     pub status: EpisodeStatus,
     pub epguid: Option<String>,
-}
-
-#[derive(FromSqlRow)]
-pub struct EpisodeDB {
-    pub castid: i32,
-    pub episodeid: i32,
-    pub title: String,
-    pub epurl: String,
-    pub enctype: String,
-    pub status: String,
-    pub epguid: Option<String>,
-}
-
-impl From<EpisodeDB> for Episode {
-    fn from(item: EpisodeDB) -> Self {
-        Self {
-            castid: item.castid,
-            episodeid: item.episodeid,
-            title: item.title,
-            epurl: item.epurl,
-            enctype: item.enctype,
-            status: item.status.parse().unwrap_or(EpisodeStatus::Ready),
-            epguid: item.epguid,
-        }
-    }
 }
 
 impl Episode {
@@ -131,8 +65,7 @@ impl Episode {
             WHERE castid = $1 AND episodeid = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &eid])?.get(0) {
-            let ep = EpisodeDB::from_row(row)?.into();
-            Ok(Some(ep))
+            Ok(Some(Episode::from_row(row)?))
         } else {
             Ok(None)
         }
@@ -146,8 +79,7 @@ impl Episode {
             WHERE castid = $1 AND epurl = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &epurl])?.get(0) {
-            let ep = EpisodeDB::from_row(row)?.into();
-            Ok(Some(ep))
+            Ok(Some(Episode::from_row(row)?))
         } else {
             Ok(None)
         }
@@ -161,8 +93,7 @@ impl Episode {
             WHERE castid = $1 AND epguid = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &epguid])?.get(0) {
-            let ep = EpisodeDB::from_row(row)?.into();
-            Ok(Some(ep))
+            Ok(Some(Episode::from_row(row)?))
         } else {
             Ok(None)
         }
@@ -178,10 +109,7 @@ impl Episode {
         pool.get()?
             .query(query, &[&cid])?
             .iter()
-            .map(|row| {
-                let ep = EpisodeDB::from_row(row)?.into();
-                Ok(ep)
-            })
+            .map(|row| Ok(Episode::from_row(row)?))
             .collect()
     }
 

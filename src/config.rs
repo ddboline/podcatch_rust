@@ -15,12 +15,12 @@ pub struct ConfigInner {
 pub struct Config(Arc<ConfigInner>);
 
 impl ConfigInner {
-    pub fn new() -> ConfigInner {
-        Default::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn from_env() -> ConfigInner {
-        let mut conf = ConfigInner::default();
+    pub fn from_env() -> Self {
+        let mut conf = Self::default();
         if let Ok(database_url) = var("DATABASE_URL") {
             conf.database_url = database_url;
         }
@@ -35,11 +35,11 @@ impl ConfigInner {
 }
 
 impl Config {
-    pub fn new() -> Config {
-        Default::default()
+    pub fn new() -> Self {
+        Config::default()
     }
 
-    pub fn init_config() -> Result<Config, Error> {
+    pub fn init_config() -> Result<Self, Error> {
         let home_dir = var("HOME").map_err(|e| format_err!("No HOME Directory {}", e))?;
 
         let env_file = format!("{}/.config/podcatch_rust/config.env", home_dir);
@@ -54,7 +54,7 @@ impl Config {
 
         let config = ConfigInner::from_env();
 
-        Ok(Config(Arc::new(config)))
+        Ok(Self(Arc::new(config)))
     }
 }
 

@@ -8,7 +8,8 @@ use std::path::Path;
 use structopt::StructOpt;
 
 use crate::config::Config;
-use crate::episode::{Episode, EpisodeStatus};
+use crate::episode::Episode;
+use crate::episode_status::EpisodeStatus;
 use crate::get_md5sum;
 use crate::google_music::{get_uploaded_mp3, run_google_music, upload_list_of_mp3s};
 use crate::pgpool::PgPool;
@@ -184,7 +185,9 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                 .map(|epi| {
                     let url = epi.url_basename()?;
                     let epguid = epi.epguid.as_ref().ok_or_else(|| err_msg("no md5sum"))?;
-                    if epguid.len() != 32 {
+                    if epguid.len() == 32 {
+                        writeln!(stdout.lock(), "{:?}", epi)?;
+                    } else {
                         if let Some(directory) = pod.directory.as_ref() {
                             let fname = format!("{}/{}", directory, url);
                             let path = Path::new(&fname);
@@ -201,8 +204,6 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                                 new_epi.update_episode(&pool)?;
                             }
                         }
-                    } else {
-                        writeln!(stdout.lock(), "{:?}", epi)?;
                     }
                     Ok(())
                 })

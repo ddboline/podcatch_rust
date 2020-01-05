@@ -1,5 +1,6 @@
 pub mod config;
 pub mod episode;
+pub mod episode_status;
 pub mod exponential_retry;
 pub mod google_music;
 pub mod pgpool;

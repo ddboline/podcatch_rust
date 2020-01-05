@@ -28,6 +28,7 @@ env_logger = "0.7"
 retry = "0.5"
 crossbeam-utils = "0.7"
 postgres_query = "0.2"
+bytes = "0.5"
 
 [[bin]]
 name = "podcatch-rust"
