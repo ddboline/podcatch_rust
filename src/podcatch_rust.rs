@@ -1,4 +1,4 @@
-use failure::Error;
+use anyhow::Error;
 
 use podcatch_rust::podcatch_opts::PodcatchOpts;
 

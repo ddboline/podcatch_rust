@@ -1,11 +1,10 @@
 [package]
 name = "podcatch_rust"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-failure = "0.1"
 r2d2 = "0.8"
 r2d2_postgres = "0.16"
 dotenv = "0.15"
@@ -29,6 +28,8 @@ retry = "0.5"
 crossbeam-utils = "0.7"
 postgres_query = "0.2"
 bytes = "0.5"
+anyhow = "1.0"
+thiserror = "1.0"
 
 [[bin]]
 name = "podcatch-rust"

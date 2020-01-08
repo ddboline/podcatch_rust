@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use bytes::BytesMut;
-use failure::{format_err, Error};
 use postgres::types::{FromSql, IsNull, ToSql, Type};
 use std::fmt;
 use std::str::FromStr;

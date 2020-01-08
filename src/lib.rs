@@ -8,8 +8,8 @@ pub mod pod_connection;
 pub mod podcast;
 pub mod podcatch_opts;
 
+use anyhow::Error;
 use checksums::{hash_file, Algorithm};
-use failure::Error;
 use std::fs::File;
 use std::path::Path;
 

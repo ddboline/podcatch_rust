@@ -1,4 +1,4 @@
-use failure::{format_err, Error};
+use anyhow::{format_err, Error};
 use log::error;
 use reqwest::blocking::{Client, Response};
 use reqwest::Url;

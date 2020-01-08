@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use anyhow::{format_err, Error};
 use reqwest::blocking::Client;
 use reqwest::Url;
 use roxmltree::{Document, NodeType};
@@ -143,7 +143,7 @@ impl PodConnection {
     pub fn dump_to_file(&self, url: &Url, outfile: &str) -> Result<(), Error> {
         let outpath = Path::new(outfile);
         if outpath.exists() {
-            Err(err_msg("File exists"))
+            Err(format_err!("File exists"))
         } else {
             let mut f = File::create(outfile)?;
             self.get(url)?.copy_to(&mut f)?;

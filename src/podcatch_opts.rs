@@ -1,5 +1,5 @@
+use anyhow::{format_err, Error};
 use crossbeam_utils::thread;
-use failure::{err_msg, format_err, Error};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reqwest::Url;
 use std::collections::HashMap;
@@ -184,7 +184,10 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                 .into_par_iter()
                 .map(|epi| {
                     let url = epi.url_basename()?;
-                    let epguid = epi.epguid.as_ref().ok_or_else(|| err_msg("no md5sum"))?;
+                    let epguid = epi
+                        .epguid
+                        .as_ref()
+                        .ok_or_else(|| format_err!("no md5sum"))?;
                     if epguid.len() == 32 {
                         writeln!(stdout.lock(), "{:?}", epi)?;
                     } else {

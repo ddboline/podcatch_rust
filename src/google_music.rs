@@ -1,8 +1,8 @@
+use anyhow::{format_err, Error};
 use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
     PyTuple, Python, PythonObject, ToPyObject,
 };
-use failure::{err_msg, format_err, Error};
 use id3::Tag;
 use log::debug;
 use postgres_query::FromSqlRow;
@@ -84,7 +84,7 @@ impl GoogleMusicMetadata {
         pool.get()?
             .execute(query.sql, &query.parameters)
             .map(|_| ())
-            .map_err(err_msg)
+            .map_err(Into::into)
     }
 
     pub fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
@@ -109,7 +109,7 @@ impl GoogleMusicMetadata {
         pool.get()?
             .execute(query.sql, &query.parameters)
             .map(|_| ())
-            .map_err(err_msg)
+            .map_err(Into::into)
     }
 
     pub fn by_id(id: &str, pool: &PgPool) -> Result<Option<GoogleMusicMetadata>, Error> {

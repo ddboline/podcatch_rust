@@ -1,4 +1,4 @@
-use failure::{err_msg, Error};
+use anyhow::Error;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
 use std::collections::HashMap;
@@ -100,7 +100,7 @@ impl Podcast {
     pub fn get_max_castid(pool: &PgPool) -> Result<i32, Error> {
         let query = "SELECT MAX(castid) FROM podcasts";
         match pool.get()?.query(query, &[])?.get(0) {
-            Some(row) => row.try_get(0).map_err(err_msg),
+            Some(row) => row.try_get(0).map_err(Into::into),
             None => Ok(0),
         }
     }

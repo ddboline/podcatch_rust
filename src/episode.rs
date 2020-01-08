@@ -1,4 +1,4 @@
-use failure::{err_msg, format_err, Error};
+use anyhow::{format_err, Error};
 use log::debug;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
@@ -41,7 +41,7 @@ impl Episode {
                 .epurl
                 .split("newrustacean/")
                 .last()
-                .ok_or_else(|| err_msg("..."))?
+                .ok_or_else(|| format_err!("..."))?
                 .split('/')
                 .collect();
             let basename: String = basename.join("_");
@@ -53,7 +53,7 @@ impl Episode {
                 .split('/')
                 .last()
                 .map(|s| s.to_string())
-                .ok_or_else(|| err_msg("No basename"))
+                .ok_or_else(|| format_err!("No basename"))
         }
     }
 
@@ -133,7 +133,7 @@ impl Episode {
         );
         pool.get()?
             .execute(query.sql, &query.parameters)
-            .map_err(err_msg)
+            .map_err(Into::into)
     }
 
     pub fn update_episode(&self, pool: &PgPool) -> Result<u64, Error> {
@@ -154,7 +154,7 @@ impl Episode {
         );
         pool.get()?
             .execute(query.sql, &query.parameters)
-            .map_err(err_msg)
+            .map_err(Into::into)
     }
 
     pub fn get_max_epid(pool: &PgPool) -> Result<i32, Error> {
@@ -162,8 +162,8 @@ impl Episode {
         pool.get()?
             .query(query, &[])?
             .get(0)
-            .ok_or_else(|| err_msg("No episodes"))
-            .and_then(|row| row.try_get(0).map_err(err_msg))
+            .ok_or_else(|| format_err!("No episodes"))
+            .and_then(|row| row.try_get(0).map_err(Into::into))
     }
 
     pub fn download_episode(
@@ -188,7 +188,7 @@ impl Episode {
                 p.status = EpisodeStatus::Downloaded;
                 Ok(p)
             } else {
-                Err(err_msg("Download failed"))
+                Err(format_err!("Download failed"))
             }
         } else {
             Err(format_err!("Unkown failure {:?}", self))
