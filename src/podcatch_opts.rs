@@ -190,22 +190,20 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                         .ok_or_else(|| format_err!("no md5sum"))?;
                     if epguid.len() == 32 {
                         writeln!(stdout.lock(), "{:?}", epi)?;
-                    } else {
-                        if let Some(directory) = pod.directory.as_ref() {
-                            let fname = format!("{}/{}", directory, url);
-                            let path = Path::new(&fname);
-                            if path.exists() {
-                                if let Ok(md5sum) = get_md5sum(&path) {
-                                    let mut p = epi.clone();
-                                    writeln!(stdout.lock(), "update md5sum {} {}", fname, md5sum)?;
-                                    p.epguid = Some(md5sum);
-                                    p.update_episode(&pool)?;
-                                }
-                            } else if let Ok(url_) = epi.epurl.parse::<Url>() {
-                                writeln!(stdout.lock(), "download {:?} {}", url_, fname)?;
-                                let new_epi = epi.download_episode(&pod_conn, directory)?;
-                                new_epi.update_episode(&pool)?;
+                    } else if let Some(directory) = pod.directory.as_ref() {
+                        let fname = format!("{}/{}", directory, url);
+                        let path = Path::new(&fname);
+                        if path.exists() {
+                            if let Ok(md5sum) = get_md5sum(&path) {
+                                let mut p = epi.clone();
+                                writeln!(stdout.lock(), "update md5sum {} {}", fname, md5sum)?;
+                                p.epguid = Some(md5sum);
+                                p.update_episode(&pool)?;
                             }
+                        } else if let Ok(url_) = epi.epurl.parse::<Url>() {
+                            writeln!(stdout.lock(), "download {:?} {}", url_, fname)?;
+                            let new_epi = epi.download_episode(&pod_conn, directory)?;
+                            new_epi.update_episode(&pool)?;
                         }
                     }
                     Ok(())
