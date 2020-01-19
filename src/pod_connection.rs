@@ -21,14 +21,13 @@ impl Default for PodConnection {
 }
 
 impl PodConnection {
-    pub fn new() -> PodConnection {
+    pub fn new() -> Self {
         Self {
             client: Client::new(),
         }
     }
 
     fn get_current_episode(
-        &self,
         podcast: &Podcast,
         title: Option<&String>,
         epurl: Option<&String>,
@@ -38,16 +37,12 @@ impl PodConnection {
     ) -> Option<Episode> {
         if let Some(epurl) = epurl.as_ref() {
             let ep = Episode {
-                title: title
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| "Unknown".to_string()),
+                title: title.map_or_else(|| "Unknown".to_string(), ToString::to_string),
                 castid: podcast.castid,
                 episodeid: latest_epid,
                 epurl: (*epurl).to_string(),
-                enctype: enctype
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| "".to_string()),
-                ..Default::default()
+                enctype: enctype.map_or_else(|| "".to_string(), ToString::to_string),
+                ..Episode::default()
             };
 
             let url_exists = if let Ok(url) = ep.url_basename() {
@@ -98,7 +93,7 @@ impl PodConnection {
         for d in doc.root().descendants() {
             if d.node_type() == NodeType::Element && d.tag_name().name() == "title" {
                 if epurl.is_some() {
-                    if let Some(epi) = self.get_current_episode(
+                    if let Some(epi) = Self::get_current_episode(
                         &podcast,
                         title.as_ref(),
                         epurl.as_ref(),
@@ -126,7 +121,7 @@ impl PodConnection {
             }
         }
 
-        if let Some(epi) = self.get_current_episode(
+        if let Some(epi) = Self::get_current_episode(
             &podcast,
             title.as_ref(),
             epurl.as_ref(),

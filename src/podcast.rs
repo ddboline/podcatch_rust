@@ -21,13 +21,13 @@ impl Podcast {
         cname: &str,
         furl: &Url,
         dir: &str,
-    ) -> Result<Podcast, Error> {
-        let pod = if let Some(p) = Podcast::from_index(&pool, cid)? {
+    ) -> Result<Self, Error> {
+        let pod = if let Some(p) = Self::from_index(&pool, cid)? {
             p
-        } else if let Some(p) = Podcast::from_feedurl(&pool, furl.as_str())? {
+        } else if let Some(p) = Self::from_feedurl(&pool, furl.as_str())? {
             p
         } else {
-            let pod = Podcast {
+            let pod = Self {
                 castid: cid,
                 castname: cname.to_string(),
                 feedurl: furl.to_string(),
@@ -51,7 +51,7 @@ impl Podcast {
         Ok(pod)
     }
 
-    pub fn from_index(pool: &PgPool, cid: i32) -> Result<Option<Podcast>, Error> {
+    pub fn from_index(pool: &PgPool, cid: i32) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 castid, castname, feedurl, directory
@@ -59,14 +59,14 @@ impl Podcast {
             WHERE castid = $1
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid])?.get(0) {
-            let pod = Podcast::from_row(row)?;
+            let pod = Self::from_row(row)?;
             Ok(Some(pod))
         } else {
             Ok(None)
         }
     }
 
-    pub fn from_feedurl(pool: &PgPool, feedurl: &str) -> Result<Option<Podcast>, Error> {
+    pub fn from_feedurl(pool: &PgPool, feedurl: &str) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 castid, castname, feedurl, directory
@@ -74,14 +74,14 @@ impl Podcast {
             WHERE feedurl = $1
         "#;
         if let Some(row) = pool.get()?.query(query, &[&feedurl.to_string()])?.get(0) {
-            let pod = Podcast::from_row(row)?;
+            let pod = Self::from_row(row)?;
             Ok(Some(pod))
         } else {
             Ok(None)
         }
     }
 
-    pub fn get_all_podcasts(pool: &PgPool) -> Result<Vec<Podcast>, Error> {
+    pub fn get_all_podcasts(pool: &PgPool) -> Result<Vec<Self>, Error> {
         let query = r#"
             SELECT
                 castid, castname, feedurl, directory
@@ -91,7 +91,7 @@ impl Podcast {
             .query(query, &[])?
             .iter()
             .map(|row| {
-                let pod = Podcast::from_row(row)?;
+                let pod = Self::from_row(row)?;
                 Ok(pod)
             })
             .collect()

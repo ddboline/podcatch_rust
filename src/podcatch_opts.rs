@@ -11,7 +11,7 @@ use crate::config::Config;
 use crate::episode::Episode;
 use crate::episode_status::EpisodeStatus;
 use crate::get_md5sum;
-use crate::google_music::{get_uploaded_mp3, run_google_music, upload_list_of_mp3s};
+use crate::google_music::{run_google_music, upload_list_of_mp3s, GoogleMusicMetadata};
 use crate::pgpool::PgPool;
 use crate::pod_connection::PodConnection;
 use crate::podcast::Podcast;
@@ -38,14 +38,14 @@ pub struct PodcatchOpts {
 
 impl PodcatchOpts {
     pub fn process_args() -> Result<(), Error> {
-        let opts = PodcatchOpts::from_args();
+        let opts = Self::from_args();
 
         let config = Config::init_config()?;
         let pool = PgPool::new(&config.database_url);
 
         if opts.do_google_music {
             thread::scope(|s| {
-                let t = s.spawn(|_| get_uploaded_mp3(&config));
+                let t = s.spawn(|_| GoogleMusicMetadata::get_uploaded_mp3(&config));
                 process_all_podcasts(&pool, &config)?;
                 let mut metadata = t.join().expect("get_uploaded_mp3 paniced")?;
                 run_google_music(

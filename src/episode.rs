@@ -29,8 +29,7 @@ impl Episode {
                 .to_lowercase()
                 .chars()
                 .filter_map(|c| match c {
-                    'a'..='z' => Some(c),
-                    '0'..='9' => Some(c),
+                    'a'..='z' | '0'..='9' => Some(c),
                     ' ' => Some('_'),
                     _ => None,
                 })
@@ -52,12 +51,12 @@ impl Episode {
                 .path()
                 .split('/')
                 .last()
-                .map(|s| s.to_string())
+                .map(ToString::to_string)
                 .ok_or_else(|| format_err!("No basename"))
         }
     }
 
-    pub fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Episode>, Error> {
+    pub fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
@@ -65,13 +64,13 @@ impl Episode {
             WHERE castid = $1 AND episodeid = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &eid])?.get(0) {
-            Ok(Some(Episode::from_row(row)?))
+            Ok(Some(Self::from_row(row)?))
         } else {
             Ok(None)
         }
     }
 
-    pub fn from_epurl(pool: &PgPool, cid: i32, epurl: &str) -> Result<Option<Episode>, Error> {
+    pub fn from_epurl(pool: &PgPool, cid: i32, epurl: &str) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
@@ -79,13 +78,13 @@ impl Episode {
             WHERE castid = $1 AND epurl = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &epurl])?.get(0) {
-            Ok(Some(Episode::from_row(row)?))
+            Ok(Some(Self::from_row(row)?))
         } else {
             Ok(None)
         }
     }
 
-    pub fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Episode>, Error> {
+    pub fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
@@ -93,13 +92,13 @@ impl Episode {
             WHERE castid = $1 AND epguid = $2
         "#;
         if let Some(row) = pool.get()?.query(query, &[&cid, &epguid])?.get(0) {
-            Ok(Some(Episode::from_row(row)?))
+            Ok(Some(Self::from_row(row)?))
         } else {
             Ok(None)
         }
     }
 
-    pub fn get_all_episodes(pool: &PgPool, cid: i32) -> Result<Vec<Episode>, Error> {
+    pub fn get_all_episodes(pool: &PgPool, cid: i32) -> Result<Vec<Self>, Error> {
         let query = r#"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
@@ -109,7 +108,7 @@ impl Episode {
         pool.get()?
             .query(query, &[&cid])?
             .iter()
-            .map(|row| Ok(Episode::from_row(row)?))
+            .map(|row| Ok(Self::from_row(row)?))
             .collect()
     }
 
@@ -166,11 +165,7 @@ impl Episode {
             .and_then(|row| row.try_get(0).map_err(Into::into))
     }
 
-    pub fn download_episode(
-        &self,
-        conn: &PodConnection,
-        directory: &str,
-    ) -> Result<Episode, Error> {
+    pub fn download_episode(&self, conn: &PodConnection, directory: &str) -> Result<Self, Error> {
         if !Path::new(directory).exists() {
             Err(format_err!("No such directory {}", directory))
         } else if let Ok(url) = self.epurl.parse() {

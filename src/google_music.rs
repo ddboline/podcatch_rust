@@ -112,7 +112,7 @@ impl GoogleMusicMetadata {
             .map_err(Into::into)
     }
 
-    pub fn by_id(id: &str, pool: &PgPool) -> Result<Option<GoogleMusicMetadata>, Error> {
+    pub fn by_id(id: &str, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 id, title, album, artist, track_size, album_artist, track_number, disc_number,
@@ -121,14 +121,14 @@ impl GoogleMusicMetadata {
             WHERE id=$1
         "#;
         if let Some(row) = pool.get()?.query(query, &[&id])?.get(0) {
-            let g = GoogleMusicMetadata::from_row(row)?;
+            let g = Self::from_row(row)?;
             Ok(Some(g))
         } else {
             Ok(None)
         }
     }
 
-    pub fn by_key(key: &MusicKey, pool: &PgPool) -> Result<Vec<GoogleMusicMetadata>, Error> {
+    pub fn by_key(key: &MusicKey, pool: &PgPool) -> Result<Vec<Self>, Error> {
         let query = r#"
             SELECT
                 id, title, album, artist, track_size, album_artist, track_number, disc_number,
@@ -140,13 +140,13 @@ impl GoogleMusicMetadata {
             .query(query, &[&key.artist, &key.album, &key.title])?
             .iter()
             .map(|row| {
-                let g = GoogleMusicMetadata::from_row(row)?;
+                let g = Self::from_row(row)?;
                 Ok(g)
             })
             .collect()
     }
 
-    pub fn by_title(title: &str, pool: &PgPool) -> Result<Vec<GoogleMusicMetadata>, Error> {
+    pub fn by_title(title: &str, pool: &PgPool) -> Result<Vec<Self>, Error> {
         let query = r#"
             SELECT
                 id, title, album, artist, track_size, album_artist, track_number, disc_number,
@@ -158,13 +158,13 @@ impl GoogleMusicMetadata {
             .query(query, &[&title])?
             .iter()
             .map(|row| {
-                let g = GoogleMusicMetadata::from_row(row)?;
+                let g = Self::from_row(row)?;
                 Ok(g)
             })
             .collect()
     }
 
-    pub fn from_pydict(py: Python, dict: PyDict) -> PyResult<Self> {
+    pub fn from_pydict(py: Python, dict: &PyDict) -> PyResult<Self> {
         let id = get_pydict_item!(py, dict, id, String)?;
         let title = get_pydict_item!(py, dict, title, String)?;
         let album = get_pydict_item!(py, dict, album, String)?;
@@ -191,14 +191,14 @@ impl GoogleMusicMetadata {
 
         Ok(gm)
     }
+
+    pub fn get_uploaded_mp3(config: &Config) -> Result<Vec<Self>, Error> {
+        _get_uploaded_mp3(config).map_err(|e| format_err!("{:?}", e))
+    }
 }
 
 fn exception(py: Python, msg: &str) -> PyErr {
     PyErr::new::<exc::Exception, _>(py, msg)
-}
-
-pub fn get_uploaded_mp3(config: &Config) -> Result<Vec<GoogleMusicMetadata>, Error> {
-    _get_uploaded_mp3(config).map_err(|e| format_err!("{:?}", e))
 }
 
 fn _get_uploaded_mp3(config: &Config) -> PyResult<Vec<GoogleMusicMetadata>> {
@@ -219,7 +219,7 @@ fn _get_uploaded_mp3(config: &Config) -> PyResult<Vec<GoogleMusicMetadata>> {
     let mut results = Vec::new();
     for item in uploaded.iter(py) {
         let dict = PyDict::extract(py, &item)?;
-        let result = GoogleMusicMetadata::from_pydict(py, dict)?;
+        let result = GoogleMusicMetadata::from_pydict(py, &dict)?;
         results.push(result);
     }
     Ok(results)

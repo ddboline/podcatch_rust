@@ -36,7 +36,7 @@ impl ConfigInner {
 
 impl Config {
     pub fn new() -> Self {
-        Config::default()
+        Self::default()
     }
 
     pub fn init_config() -> Result<Self, Error> {
