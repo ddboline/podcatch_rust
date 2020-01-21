@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -30,6 +30,7 @@ postgres_query = "0.2"
 bytes = "0.5"
 anyhow = "1.0"
 thiserror = "1.0"
+dirs = "2.0"
 
 [[bin]]
 name = "podcatch-rust"
