@@ -45,7 +45,7 @@ impl Podcast {
                 feedurl = pod.feedurl,
                 directory = pod.directory
             );
-            pool.get()?.execute(query.sql, &query.parameters)?;
+            pool.get()?.execute(query.sql(), &query.parameters())?;
             pod
         };
         Ok(pod)

@@ -82,7 +82,7 @@ impl GoogleMusicMetadata {
             filename = self.filename
         );
         pool.get()?
-            .execute(query.sql, &query.parameters)
+            .execute(query.sql(), &query.parameters())
             .map(|_| ())
             .map_err(Into::into)
     }
@@ -107,7 +107,7 @@ impl GoogleMusicMetadata {
             filename = self.filename
         );
         pool.get()?
-            .execute(query.sql, &query.parameters)
+            .execute(query.sql(), &query.parameters())
             .map(|_| ())
             .map_err(Into::into)
     }

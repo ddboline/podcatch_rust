@@ -131,7 +131,7 @@ impl Episode {
             epguid = self.epguid
         );
         pool.get()?
-            .execute(query.sql, &query.parameters)
+            .execute(query.sql(), &query.parameters())
             .map_err(Into::into)
     }
 
@@ -152,7 +152,7 @@ impl Episode {
             epguid = self.epguid
         );
         pool.get()?
-            .execute(query.sql, &query.parameters)
+            .execute(query.sql(), &query.parameters())
             .map_err(Into::into)
     }
 
