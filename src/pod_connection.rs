@@ -1,10 +1,12 @@
 use anyhow::{format_err, Error};
-use reqwest::blocking::Client;
+use futures_util::StreamExt;
+use reqwest::Client;
 use reqwest::Url;
 use roxmltree::{Document, NodeType};
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 
 use crate::episode::Episode;
 use crate::exponential_retry::ExponentialRetry;
@@ -27,7 +29,7 @@ impl PodConnection {
         }
     }
 
-    fn get_current_episode(
+    async fn get_current_episode(
         podcast: &Podcast,
         title: Option<&String>,
         epurl: Option<&String>,
@@ -75,14 +77,14 @@ impl PodConnection {
         None
     }
 
-    pub fn parse_feed(
+    pub async fn parse_feed(
         &self,
         podcast: &Podcast,
         filter_urls: &HashMap<String, Episode>,
         mut latest_epid: i32,
     ) -> Result<Vec<Episode>, Error> {
         let url = podcast.feedurl.parse()?;
-        let text = self.get(&url)?.text()?;
+        let text = self.get(&url).await?.text().await?;
         let doc = Document::parse(&text)?;
 
         let mut episodes = Vec::new();
@@ -100,7 +102,9 @@ impl PodConnection {
                         enctype.as_ref(),
                         &filter_urls,
                         latest_epid,
-                    ) {
+                    )
+                    .await
+                    {
                         episodes.push(epi);
                     }
                     title = None;
@@ -128,20 +132,25 @@ impl PodConnection {
             enctype.as_ref(),
             &filter_urls,
             latest_epid,
-        ) {
+        )
+        .await
+        {
             episodes.push(epi);
         }
 
         Ok(episodes)
     }
 
-    pub fn dump_to_file(&self, url: &Url, outfile: &str) -> Result<(), Error> {
+    pub async fn dump_to_file(&self, url: &Url, outfile: &str) -> Result<(), Error> {
         let outpath = Path::new(outfile);
         if outpath.exists() {
             Err(format_err!("File exists"))
         } else {
-            let mut f = File::create(outfile)?;
-            self.get(url)?.copy_to(&mut f)?;
+            let mut f = File::create(outfile).await?;
+            let mut byte_stream = self.get(url).await?.bytes_stream();
+            while let Some(item) = byte_stream.next().await {
+                f.write_all(&item?).await?;
+            }
             Ok(())
         }
     }
@@ -166,26 +175,26 @@ mod tests {
     use crate::pod_connection::PodConnection;
     use crate::podcast::Podcast;
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_pod_connection_get() {
+    async fn test_pod_connection_get() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
-        let pod = Podcast::from_index(&pool, 1).unwrap().unwrap();
+        let pod = Podcast::from_index(&pool, 1).await.unwrap().unwrap();
         let url: Url = pod.feedurl.parse().unwrap();
         let conn = PodConnection::new();
-        let resp = conn.get(&url).unwrap();
-        let text = resp.text().unwrap();
+        let resp = conn.get(&url).await.unwrap();
+        let text = resp.text().await.unwrap();
 
         assert!(text.starts_with("<?xml"));
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_pod_connection_parse_feed() {
+    async fn test_pod_connection_parse_feed() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
-        let current_episodes = Episode::get_all_episodes(&pool, 1).unwrap();
+        let current_episodes = Episode::get_all_episodes(&pool, 1).await.unwrap();
         let max_epid = current_episodes
             .iter()
             .map(|e| e.episodeid)
@@ -200,18 +209,18 @@ mod tests {
             })
             .collect();
 
-        let pod = Podcast::from_index(&pool, 23).unwrap().unwrap();
+        let pod = Podcast::from_index(&pool, 23).await.unwrap().unwrap();
         let conn = PodConnection::new();
-        let new_episodes = conn.parse_feed(&pod, &current_urls, max_epid + 1).unwrap();
+        let new_episodes = conn.parse_feed(&pod, &current_urls, max_epid + 1).await.unwrap();
         assert!(new_episodes.len() > 0);
     }
 
-    #[test]
-    fn test_dump_to_file() {
+    #[tokio::test]
+    async fn test_dump_to_file() {
         let url = "https://dts.podtrac.com/redirect.mp3/api.entale.co/download/47015acd-f383-416d-8934-344cd944bfab/6215e4ba-ea1a-43e6-8d76-3de84fa5f52e/media.mp3";
         let url: Url = url.parse().unwrap();
         let pod_conn = PodConnection::new();
-        if pod_conn.dump_to_file(&url, "/tmp/temp.mp3").is_ok() {
+        if pod_conn.dump_to_file(&url, "/tmp/temp.mp3").await.is_ok() {
             remove_file("/tmp/temp.mp3").unwrap();
         }
         assert!(true);

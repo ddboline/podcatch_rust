@@ -7,7 +7,7 @@ use id3::Tag;
 use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{
-    IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+    IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -60,7 +60,7 @@ macro_rules! get_pydict_item {
 }
 
 impl GoogleMusicMetadata {
-    pub fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
+    pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             r#"
             INSERT INTO google_music_metadata (
@@ -81,13 +81,15 @@ impl GoogleMusicMetadata {
             total_disc_count = self.total_disc_count,
             filename = self.filename
         );
-        pool.get()?
+        pool.get()
+            .await?
             .execute(query.sql(), &query.parameters())
+            .await
             .map(|_| ())
             .map_err(Into::into)
     }
 
-    pub fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
+    pub async fn update_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
             r#"
                 UPDATE google_music_metadata
@@ -106,13 +108,15 @@ impl GoogleMusicMetadata {
             total_disc_count = self.total_disc_count,
             filename = self.filename
         );
-        pool.get()?
+        pool.get()
+            .await?
             .execute(query.sql(), &query.parameters())
+            .await
             .map(|_| ())
             .map_err(Into::into)
     }
 
-    pub fn by_id(id: &str, pool: &PgPool) -> Result<Option<Self>, Error> {
+    pub async fn by_id(id: &str, pool: &PgPool) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 id, title, album, artist, track_size, album_artist, track_number, disc_number,
@@ -120,7 +124,7 @@ impl GoogleMusicMetadata {
             FROM google_music_metadata
             WHERE id=$1
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&id])?.get(0) {
+        if let Some(row) = pool.get().await?.query(query, &[&id]).await?.get(0) {
             let g = Self::from_row(row)?;
             Ok(Some(g))
         } else {
@@ -128,7 +132,7 @@ impl GoogleMusicMetadata {
         }
     }
 
-    pub fn by_key(key: &MusicKey, pool: &PgPool) -> Result<Vec<Self>, Error> {
+    pub async fn by_key(key: &MusicKey, pool: &PgPool) -> Result<Vec<Self>, Error> {
         let query = r#"
             SELECT
                 id, title, album, artist, track_size, album_artist, track_number, disc_number,
@@ -136,8 +140,10 @@ impl GoogleMusicMetadata {
             FROM google_music_metadata
             WHERE artist=$1 AND album=$2 AND title=$3
         "#;
-        pool.get()?
-            .query(query, &[&key.artist, &key.album, &key.title])?
+        pool.get()
+            .await?
+            .query(query, &[&key.artist, &key.album, &key.title])
+            .await?
             .iter()
             .map(|row| {
                 let g = Self::from_row(row)?;
@@ -146,7 +152,7 @@ impl GoogleMusicMetadata {
             .collect()
     }
 
-    pub fn by_title(title: &str, pool: &PgPool) -> Result<Vec<Self>, Error> {
+    pub async fn by_title(title: &str, pool: &PgPool) -> Result<Vec<Self>, Error> {
         let query = r#"
             SELECT
                 id, title, album, artist, track_size, album_artist, track_number, disc_number,
@@ -154,8 +160,10 @@ impl GoogleMusicMetadata {
             FROM google_music_metadata
             WHERE title=$1
         "#;
-        pool.get()?
-            .query(query, &[&title])?
+        pool.get()
+            .await?
+            .query(query, &[&title])
+            .await?
             .iter()
             .map(|row| {
                 let g = Self::from_row(row)?;
@@ -256,7 +264,7 @@ pub fn upload_list_of_mp3s(config: &Config, filelist: &[PathBuf]) -> PyResult<Ve
     Ok(results)
 }
 
-pub fn run_google_music(
+pub async fn run_google_music(
     config: &Config,
     metadata: &mut [GoogleMusicMetadata],
     filename: Option<&str>,
@@ -283,19 +291,16 @@ pub fn run_google_music(
         }
     }
 
-    let metadata: Result<Vec<_>, Error> = metadata
-        .par_iter_mut()
-        .map(|mut m| {
-            if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool)? {
-                m.filename = m_.filename;
-            } else {
-                m.insert_into_db(&pool)?;
-            }
-            Ok(m)
-        })
-        .collect();
-
-    let metadata = metadata?;
+    let mut new_metadata = Vec::new();
+    for m in metadata {
+        if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool).await? {
+            m.filename = m_.filename;
+        } else {
+            m.insert_into_db(&pool).await?;
+        }
+        new_metadata.push(m);
+    }
+    let metadata = new_metadata;
 
     let filename_map: HashMap<String, _> = metadata
         .par_iter()
@@ -306,15 +311,11 @@ pub fn run_google_music(
 
     let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.to_string(), m)).collect();
 
-    let title_db_map: Result<HashMap<_, _>, Error> = title_map
-        .keys()
-        .map(|t| {
-            let items = GoogleMusicMetadata::by_title(t, &pool)?;
-            Ok((t.to_string(), items))
-        })
-        .collect();
-
-    let title_db_map = title_db_map?;
+    let mut title_db_map = HashMap::new();
+    for t in title_map.keys() {
+        let items = GoogleMusicMetadata::by_title(t, &pool).await?;
+        title_db_map.insert(t.to_string(), items);
+    }
 
     let key_map: HashMap<_, _> = metadata
         .iter()
@@ -356,106 +357,94 @@ pub fn run_google_music(
         })
         .collect();
 
-    let no_tag: Vec<_> = all_files
-        .par_iter()
-        .filter_map(|path| {
-            if has_tag.contains_key(path) {
-                None
-            } else {
-                if let Some(title) = path.file_name().map(|f| f.to_string_lossy().to_string()) {
-                    if let Some(items) = title_db_map.get(&title) {
-                        if items.len() == 1 {
-                            if let Some(m) = title_map.get(&title) {
-                                if m.filename.is_none() {
-                                    let mut m = (*(*m)).clone();
-                                    m.filename.replace(path.to_string_lossy().to_string());
-                                    m.update_db(&pool).unwrap();
-                                }
-                            }
-                        } else {
-                            for item in items {
-                                if item.filename.is_none() {
-                                    debug!("no tag no filename {:?} {} {}", path, title, item.id);
-                                }
-                            }
-                        }
-                    }
-                }
-                Some(path)
-            }
-        })
-        .collect();
-
-    let in_music_key: HashMap<_, _> = has_tag
-        .par_iter()
-        .filter_map(|(p, t)| {
-            if let Some(title) = t.title() {
-                if let Some(artist) = t.artist() {
-                    if let Some(album) = t.album() {
-                        let k = MusicKey {
-                            artist: artist.to_string(),
-                            album: album.to_string(),
-                            title: title.to_string(),
-                            track_number: t.track().map(|x| x as i32),
-                        };
-                        if let Some(m) = key_map.get(&k) {
-                            if m.filename.is_none() {
-                                let mut m = (*(*m)).clone();
-                                m.filename.replace(p.to_string_lossy().to_string());
-                                m.update_db(&pool).unwrap();
-                            }
-                            return Some((k, p));
-                        }
-                    }
-                }
-            }
-            None
-        })
-        .collect();
-
-    let not_in_metadata: Vec<_> = has_tag
-        .par_iter()
-        .filter_map(|(p, t)| {
-            if let Some(title) = t.title() {
-                if let Some(items) = title_db_map.get(title) {
+    let mut no_tag = Vec::new();
+    for path in &all_files {
+        if !has_tag.contains_key(path) {
+            if let Some(title) = path.file_name().map(|f| f.to_string_lossy().to_string()) {
+                if let Some(items) = title_db_map.get(&title) {
                     if items.len() == 1 {
-                        if let Some(m) = title_map.get(title) {
+                        if let Some(m) = title_map.get(&title) {
                             if m.filename.is_none() {
                                 let mut m = (*(*m)).clone();
-                                m.filename.replace(p.to_string_lossy().to_string());
-                                m.update_db(&pool).unwrap();
+                                m.filename.replace(path.to_string_lossy().to_string());
+                                m.update_db(&pool).await.unwrap();
                             }
                         }
                     } else {
                         for item in items {
                             if item.filename.is_none() {
-                                debug!("title no filename {:?} {} {}", p, title, item.id);
+                                debug!("no tag no filename {:?} {} {}", path, title, item.id);
                             }
                         }
                     }
-                    None
+                }
+            }
+            no_tag.push(path);
+        }
+    }
+
+    let mut in_music_key = HashMap::new();
+    for (p, t) in &has_tag {
+        if let Some(title) = t.title() {
+            if let Some(artist) = t.artist() {
+                if let Some(album) = t.album() {
+                    let k = MusicKey {
+                        artist: artist.to_string(),
+                        album: album.to_string(),
+                        title: title.to_string(),
+                        track_number: t.track().map(|x| x as i32),
+                    };
+                    if let Some(m) = key_map.get(&k) {
+                        if m.filename.is_none() {
+                            let mut m = (*(*m)).clone();
+                            m.filename.replace(p.to_string_lossy().to_string());
+                            m.update_db(&pool).await.unwrap();
+                        }
+                        in_music_key.insert(k, p);
+                    }
+                }
+            }
+        }
+    }
+
+    let mut not_in_metadata = Vec::new();
+    'outer: for (p, t) in &has_tag {
+        if let Some(title) = t.title() {
+            if let Some(items) = title_db_map.get(title) {
+                if items.len() == 1 {
+                    if let Some(m) = title_map.get(title) {
+                        if m.filename.is_none() {
+                            let mut m = (*(*m)).clone();
+                            m.filename.replace(p.to_string_lossy().to_string());
+                            m.update_db(&pool).await.unwrap();
+                        }
+                    }
                 } else {
-                    for title_part in title.split('-') {
-                        if title_db_map.contains_key(title_part.trim()) {
-                            return None;
+                    for item in items {
+                        if item.filename.is_none() {
+                            debug!("title no filename {:?} {} {}", p, title, item.id);
                         }
                     }
-                    if title_db_map.contains_key(&title.replace("--", "-")) {
-                        return None;
-                    }
-                    for key in title_db_map.keys() {
-                        if title.contains(key) {
-                            debug!("exising key :{}: , :{}:", key, title);
-                        }
-                    }
-                    debug!("no title {} {:?}", title, p);
-                    Some(p.to_owned())
                 }
             } else {
-                None
+                for title_part in title.split('-') {
+                    if title_db_map.contains_key(title_part.trim()) {
+                        break 'outer;
+                    }
+                }
+                if title_db_map.contains_key(&title.replace("--", "-")) {
+                    break 'outer;
+                }
+                for key in title_db_map.keys() {
+                    if title.contains(key) {
+                        debug!("exising key :{}: , :{}:", key, title);
+                    }
+                }
+                debug!("no title {} {:?}", title, p);
+                not_in_metadata.push(p.to_owned());
             }
-        })
-        .collect();
+        }
+    }
 
     writeln!(
         stdout().lock(),

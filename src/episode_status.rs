@@ -1,8 +1,8 @@
 use anyhow::{format_err, Error};
 use bytes::BytesMut;
-use postgres::types::{FromSql, IsNull, ToSql, Type};
 use std::fmt;
 use std::str::FromStr;
+use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EpisodeStatus {
