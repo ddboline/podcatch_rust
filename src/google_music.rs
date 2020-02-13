@@ -429,11 +429,11 @@ pub async fn run_google_music(
             } else {
                 for title_part in title.split('-') {
                     if title_db_map.contains_key(title_part.trim()) {
-                        break 'outer;
+                        continue 'outer;
                     }
                 }
                 if title_db_map.contains_key(&title.replace("--", "-")) {
-                    break 'outer;
+                    continue 'outer;
                 }
                 for key in title_db_map.keys() {
                     if title.contains(key) {
