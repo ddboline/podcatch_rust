@@ -1,4 +1,4 @@
-use anyhow::{ Error};
+use anyhow::Error;
 use async_trait::async_trait;
 use rand::distributions::{Distribution, Uniform};
 use rand::thread_rng;

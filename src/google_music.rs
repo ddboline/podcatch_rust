@@ -6,15 +6,14 @@ use cpython::{
 use id3::Tag;
 use log::debug;
 use postgres_query::FromSqlRow;
-use rayon::iter::{
-    IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
-};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{stdout, BufRead, BufReader, Write};
 use std::iter::Iterator;
 use std::path::{Path, PathBuf};
+use tokio::task::spawn_blocking;
 use walkdir::WalkDir;
 
 use crate::config::Config;
@@ -281,13 +280,19 @@ pub async fn run_google_music(
                     Ok(p.to_path_buf())
                 })
                 .collect();
-            let ids = upload_list_of_mp3s(config, &flist?).map_err(|e| format_err!("{:?}", e))?;
-            for id in ids {
-                if let Some(id) = id {
-                    writeln!(stdout().lock(), "upload {}", id)?;
+            let flist = flist?;
+            let config = config.clone();
+            return spawn_blocking(move || {
+                let ids =
+                    upload_list_of_mp3s(&config, &flist).map_err(|e| format_err!("{:?}", e))?;
+                for id in ids {
+                    if let Some(id) = id {
+                        writeln!(stdout().lock(), "upload {}", id)?;
+                    }
                 }
-            }
-            return Ok(());
+                Ok(())
+            })
+            .await?;
         }
     }
 

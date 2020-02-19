@@ -45,7 +45,9 @@ impl PodcatchOpts {
         if opts.do_google_music {
             let config_ = config.clone();
             let t = spawn_blocking(move || GoogleMusicMetadata::get_uploaded_mp3(&config_));
+
             process_all_podcasts(&pool, &config).await?;
+
             let mut metadata = t.await.expect("get_uploaded_mp3 paniced")?;
             run_google_music(
                 &config,
@@ -83,7 +85,8 @@ impl PodcatchOpts {
                         podcast_url,
                         castid
                     )?;
-                    Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory).await?;
+                    Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory)
+                        .await?;
                 }
             }
         } else {

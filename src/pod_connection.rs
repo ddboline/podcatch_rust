@@ -211,7 +211,10 @@ mod tests {
 
         let pod = Podcast::from_index(&pool, 23).await.unwrap().unwrap();
         let conn = PodConnection::new();
-        let new_episodes = conn.parse_feed(&pod, &current_urls, max_epid + 1).await.unwrap();
+        let new_episodes = conn
+            .parse_feed(&pod, &current_urls, max_epid + 1)
+            .await
+            .unwrap();
         assert!(new_episodes.len() > 0);
     }
 
