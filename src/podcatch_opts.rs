@@ -44,11 +44,11 @@ impl PodcatchOpts {
 
         if opts.do_google_music {
             let config_ = config.clone();
-            let t = spawn_blocking(move || GoogleMusicMetadata::get_uploaded_mp3(&config_));
+            let metadata = spawn_blocking(move || GoogleMusicMetadata::get_uploaded_mp3(&config_));
 
             process_all_podcasts(&pool, &config).await?;
 
-            let mut metadata = t.await.expect("get_uploaded_mp3 paniced")?;
+            let mut metadata = metadata.await.expect("get_uploaded_mp3 paniced")?;
             run_google_music(
                 &config,
                 &mut metadata,
