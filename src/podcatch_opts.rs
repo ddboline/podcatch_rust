@@ -43,8 +43,10 @@ impl PodcatchOpts {
         let pool = PgPool::new(&config.database_url);
 
         if opts.do_google_music {
-            let config_ = config.clone();
-            let metadata = spawn_blocking(move || GoogleMusicMetadata::get_uploaded_mp3(&config_));
+            let metadata = {
+                let config = config.clone();
+                spawn_blocking(move || GoogleMusicMetadata::get_uploaded_mp3(&config))
+            };
 
             process_all_podcasts(&pool, &config).await?;
 
