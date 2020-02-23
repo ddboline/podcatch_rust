@@ -1,11 +1,12 @@
 use anyhow::{format_err, Error};
-use crossbeam_utils::thread;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use futures::future::try_join_all;
 use reqwest::Url;
 use std::collections::HashMap;
 use std::io::{stdout, Write};
 use std::path::Path;
+use std::sync::Arc;
 use structopt::StructOpt;
+use tokio::task::spawn_blocking;
 
 use crate::config::Config;
 use crate::episode::Episode;
@@ -37,44 +38,45 @@ pub struct PodcatchOpts {
 }
 
 impl PodcatchOpts {
-    pub fn process_args() -> Result<(), Error> {
+    pub async fn process_args() -> Result<(), Error> {
         let opts = Self::from_args();
 
         let config = Config::init_config()?;
         let pool = PgPool::new(&config.database_url);
 
         if opts.do_google_music {
-            thread::scope(|s| {
-                let t = s.spawn(|_| GoogleMusicMetadata::get_uploaded_mp3(&config));
-                process_all_podcasts(&pool, &config)?;
-                let mut metadata = t.join().expect("get_uploaded_mp3 paniced")?;
-                run_google_music(
-                    &config,
-                    &mut metadata,
-                    opts.filename.as_ref().map(String::as_str),
-                    opts.do_add,
-                    &pool,
-                )?;
-                Ok(())
-            })
-            .expect("scoped thread panic")
+            let metadata = {
+                let config = config.clone();
+                spawn_blocking(move || GoogleMusicMetadata::get_uploaded_mp3(&config))
+            };
+
+            process_all_podcasts(&pool, &config).await?;
+
+            let metadata = metadata.await.expect("get_uploaded_mp3 paniced")?;
+            run_google_music(
+                &config,
+                metadata,
+                opts.filename.as_ref().map(String::as_str),
+                opts.do_add,
+                &pool,
+            )
+            .await?;
         } else if opts.do_list {
             if let Some(castid) = opts.castid {
-                for eps in &Episode::get_all_episodes(&pool, castid)? {
+                for eps in &Episode::get_all_episodes(&pool, castid).await? {
                     writeln!(stdout().lock(), "{:?}", eps)?;
                 }
             } else {
-                for pod in &Podcast::get_all_podcasts(&pool)? {
+                for pod in &Podcast::get_all_podcasts(&pool).await? {
                     writeln!(stdout().lock(), "{:?}", pod)?;
                 }
             }
-            Ok(())
         } else if opts.do_add {
             if let Some(podcast_name) = opts.podcast_name.as_ref() {
                 if let Some(podcast_url) = opts.podcast_url.as_ref() {
                     let castid = match opts.castid {
                         Some(c) => c,
-                        None => Podcast::get_max_castid(&pool)?,
+                        None => Podcast::get_max_castid(&pool).await?,
                     };
                     let directory = opts.directory.unwrap_or_else(|| {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
@@ -87,78 +89,97 @@ impl PodcatchOpts {
                         podcast_url,
                         castid
                     )?;
-                    Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory)?;
+                    Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory)
+                        .await?;
                 }
             }
-            Ok(())
         } else {
-            process_all_podcasts(&pool, &config)
+            process_all_podcasts(&pool, &config).await?;
         }
+        Ok(())
     }
 }
 
-fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
+async fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
     let pod_conn = PodConnection::new();
-    Podcast::get_all_podcasts(&pool)?
-        .into_par_iter()
+
+    let futures: Vec<_> = Podcast::get_all_podcasts(&pool)
+        .await?
+        .into_iter()
         .map(|pod| {
-            let episodes = Episode::get_all_episodes(&pool, pod.castid)?;
-            let max_epid = Episode::get_max_epid(&pool)?;
+            let pool = pool.clone();
+            let pod_conn = pod_conn.clone();
+            let pod = Arc::new(pod);
+            async move {
+                let episodes = Episode::get_all_episodes(&pool, pod.castid).await?;
+                let max_epid = Episode::get_max_epid(&pool).await?;
 
-            let episode_map: Result<HashMap<String, Episode>, Error> = episodes
-                .into_iter()
-                .map(|e| {
-                    let basename = e.url_basename()?;
-                    Ok((basename, e))
-                })
-                .collect();
+                let episode_map: Result<HashMap<String, Episode>, Error> = episodes
+                    .into_iter()
+                    .map(|e| {
+                        let basename = e.url_basename()?;
+                        Ok((basename, e))
+                    })
+                    .collect();
 
-            let episode_map = episode_map?;
+                let episode_map = episode_map?;
 
-            let episode_list = pod_conn.parse_feed(&pod, &episode_map, max_epid + 1)?;
+                let episode_list = pod_conn
+                    .parse_feed(&pod, &episode_map, max_epid + 1)
+                    .await?;
+                let episode_list = Arc::new(episode_list);
 
-            let new_episodes: Vec<_> = episode_list
-                .iter()
-                .filter(|e| e.status == EpisodeStatus::Ready)
-                .collect();
-            let update_episodes: Vec<_> = episode_list
-                .iter()
-                .filter(|e| e.status != EpisodeStatus::Ready)
-                .collect();
+                Ok((pod, episode_list, max_epid, episode_map))
+            }
+        })
+        .collect();
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
 
-            let stdout = stdout();
+    for (pod, episode_list, max_epid, episode_map) in results? {
+        let new_episodes: Vec<_> = episode_list
+            .iter()
+            .filter(|e| e.status == EpisodeStatus::Ready)
+            .collect();
+        let update_episodes: Vec<_> = episode_list
+            .iter()
+            .filter(|e| e.status != EpisodeStatus::Ready)
+            .collect();
 
-            writeln!(
-                stdout.lock(),
-                "{} {} {} {} {}",
-                pod.castname,
-                max_epid,
-                episode_map.len(),
-                new_episodes.len(),
-                update_episodes.len(),
-            )?;
+        let stdout = stdout();
 
-            let results: Result<Vec<_>, Error> = new_episodes
-                .into_par_iter()
-                .map(|epi| {
+        writeln!(
+            stdout.lock(),
+            "{} {} {} {} {}",
+            pod.castname,
+            max_epid,
+            episode_map.len(),
+            new_episodes.len(),
+            update_episodes.len(),
+        )?;
+
+        let futures: Vec<_> = new_episodes
+            .into_iter()
+            .map(|epi| {
+                let pod = pod.clone();
+                let pod_conn = pod_conn.clone();
+                async move {
                     if let Some(directory) = pod.directory.as_ref() {
-                        writeln!(
-                            stdout.lock(),
+                        let mut output = vec![format!(
                             "new download {} {} {}",
                             epi.epurl,
                             directory,
                             epi.url_basename()?
-                        )?;
+                        )];
                         if let Some(mut new_epi) =
-                            Episode::from_epurl(&pool, pod.castid, &epi.epurl)?
+                            Episode::from_epurl(&pool, pod.castid, &epi.epurl).await?
                         {
-                            writeln!(stdout.lock(), "new title {}", epi.title)?;
+                            output.push(format!("new title {}", epi.title));
                             new_epi.title = epi.title.to_string();
-                            new_epi.update_episode(&pool)?;
+                            new_epi.update_episode(&pool).await?;
                         } else {
-                            let new_epi = epi.download_episode(&pod_conn, directory)?;
+                            let new_epi = epi.download_episode(&pod_conn, directory).await?;
                             if new_epi.epguid.is_some() {
-                                new_epi.insert_episode(&pool)?;
+                                new_epi.insert_episode(&pool).await?;
                                 if directory.contains(&config.google_music_directory) {
                                     let outfile =
                                         format!("{}/{}", directory, new_epi.url_basename()?);
@@ -166,49 +187,63 @@ fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
                                     if path.exists() {
                                         let l = upload_list_of_mp3s(config, &[path.to_path_buf()])
                                             .map_err(|e| format_err!("{:?}", e))?;
-                                        writeln!(stdout.lock(), "ids {:?}", l)?;
+                                        output.push(format!("ids {:?}", l));
                                     }
                                 }
                             } else {
-                                writeln!(stdout.lock(), "No md5sum? {:?}", new_epi)?;
+                                output.push(format!("No md5sum? {:?}", new_epi));
                             }
                         }
+                        Ok(Some(output))
+                    } else {
+                        Ok(None)
                     }
-                    Ok(())
-                })
-                .collect();
+                }
+            })
+            .collect();
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        for line in results?.into_iter().filter_map(|x| x) {
+            writeln!(stdout.lock(), "{}", line.join("\n"))?;
+        }
 
-            results?;
-
-            update_episodes
-                .into_par_iter()
-                .map(|epi| {
+        let futures: Vec<_> = update_episodes
+            .into_iter()
+            .map(|epi| {
+                let pod = pod.clone();
+                let pod_conn = pod_conn.clone();
+                async move {
+                    let mut output = Vec::new();
                     let url = epi.url_basename()?;
                     let epguid = epi
                         .epguid
                         .as_ref()
                         .ok_or_else(|| format_err!("no md5sum"))?;
                     if epguid.len() == 32 {
-                        writeln!(stdout.lock(), "{:?}", epi)?;
+                        output.push(format!("{:?}", epi));
                     } else if let Some(directory) = pod.directory.as_ref() {
                         let fname = format!("{}/{}", directory, url);
                         let path = Path::new(&fname);
                         if path.exists() {
                             if let Ok(md5sum) = get_md5sum(&path) {
                                 let mut p = epi.clone();
-                                writeln!(stdout.lock(), "update md5sum {} {}", fname, md5sum)?;
+                                output.push(format!("update md5sum {} {}", fname, md5sum));
                                 p.epguid = Some(md5sum);
-                                p.update_episode(&pool)?;
+                                p.update_episode(&pool).await?;
                             }
                         } else if let Ok(url_) = epi.epurl.parse::<Url>() {
-                            writeln!(stdout.lock(), "download {:?} {}", url_, fname)?;
-                            let new_epi = epi.download_episode(&pod_conn, directory)?;
-                            new_epi.update_episode(&pool)?;
+                            output.push(format!("download {:?} {}", url_, fname));
+                            let new_epi = epi.download_episode(&pod_conn, directory).await?;
+                            new_epi.update_episode(&pool).await?;
                         }
                     }
-                    Ok(())
-                })
-                .collect()
-        })
-        .collect()
+                    Ok(output)
+                }
+            })
+            .collect();
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        for line in results? {
+            writeln!(stdout.lock(), "{}", line.join("\n"))?;
+        }
+    }
+    Ok(())
 }

@@ -1,15 +1,15 @@
 [package]
 name = "podcatch_rust"
-version = "0.2.6"
+version = "0.3.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-r2d2 = "0.8"
-r2d2_postgres = "0.16"
+deadpool = "0.5"
+deadpool-postgres = "0.5"
 dotenv = "0.15"
-postgres = "0.17"
-reqwest = {version="0.10", features=["cookies", "blocking", "json"]}
+tokio-postgres = "0.5"
+reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"]}
 rand = "0.7"
 roxmltree = "0.9"
 checksums = "0.6"
@@ -18,8 +18,7 @@ structopt = "0.3"
 subprocess = "0.2"
 walkdir = "2.3"
 id3 = "0.5"
-serde = "1.0"
-serde_derive = "1.0"
+serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
 cpython = "0.4"
 log = "0.4"
@@ -31,6 +30,9 @@ bytes = "0.5"
 anyhow = "1.0"
 thiserror = "1.0"
 dirs = "2.0"
+tokio = {version = "0.2", features=["full"]}
+async-trait = "0.1"
+futures = "0.3"
 
 [[bin]]
 name = "podcatch-rust"

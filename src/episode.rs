@@ -56,63 +56,77 @@ impl Episode {
         }
     }
 
-    pub fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Self>, Error> {
+    pub async fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND episodeid = $2
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&cid, &eid])?.get(0) {
+        if let Some(row) = pool.get().await?.query(query, &[&cid, &eid]).await?.get(0) {
             Ok(Some(Self::from_row(row)?))
         } else {
             Ok(None)
         }
     }
 
-    pub fn from_epurl(pool: &PgPool, cid: i32, epurl: &str) -> Result<Option<Self>, Error> {
+    pub async fn from_epurl(pool: &PgPool, cid: i32, epurl: &str) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND epurl = $2
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&cid, &epurl])?.get(0) {
+        if let Some(row) = pool
+            .get()
+            .await?
+            .query(query, &[&cid, &epurl])
+            .await?
+            .get(0)
+        {
             Ok(Some(Self::from_row(row)?))
         } else {
             Ok(None)
         }
     }
 
-    pub fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Self>, Error> {
+    pub async fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND epguid = $2
         "#;
-        if let Some(row) = pool.get()?.query(query, &[&cid, &epguid])?.get(0) {
+        if let Some(row) = pool
+            .get()
+            .await?
+            .query(query, &[&cid, &epguid])
+            .await?
+            .get(0)
+        {
             Ok(Some(Self::from_row(row)?))
         } else {
             Ok(None)
         }
     }
 
-    pub fn get_all_episodes(pool: &PgPool, cid: i32) -> Result<Vec<Self>, Error> {
+    pub async fn get_all_episodes(pool: &PgPool, cid: i32) -> Result<Vec<Self>, Error> {
         let query = r#"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1
         "#;
-        pool.get()?
-            .query(query, &[&cid])?
+        pool.get()
+            .await?
+            .query(query, &[&cid])
+            .await?
             .iter()
             .map(|row| Ok(Self::from_row(row)?))
             .collect()
     }
 
-    pub fn insert_episode(&self, pool: &PgPool) -> Result<u64, Error> {
+    pub async fn insert_episode(&self, pool: &PgPool) -> Result<u64, Error> {
         let status = self.status.to_string();
         let query = postgres_query::query!(
             r#"
@@ -130,12 +144,14 @@ impl Episode {
             status = status,
             epguid = self.epguid
         );
-        pool.get()?
+        pool.get()
+            .await?
             .execute(query.sql(), &query.parameters())
+            .await
             .map_err(Into::into)
     }
 
-    pub fn update_episode(&self, pool: &PgPool) -> Result<u64, Error> {
+    pub async fn update_episode(&self, pool: &PgPool) -> Result<u64, Error> {
         let status = self.status.to_string();
         let query = postgres_query::query!(
             r#"
@@ -151,21 +167,29 @@ impl Episode {
             status = status,
             epguid = self.epguid
         );
-        pool.get()?
+        pool.get()
+            .await?
             .execute(query.sql(), &query.parameters())
+            .await
             .map_err(Into::into)
     }
 
-    pub fn get_max_epid(pool: &PgPool) -> Result<i32, Error> {
+    pub async fn get_max_epid(pool: &PgPool) -> Result<i32, Error> {
         let query = "SELECT MAX(episodeid) FROM episodes";
-        pool.get()?
-            .query(query, &[])?
+        pool.get()
+            .await?
+            .query(query, &[])
+            .await?
             .get(0)
             .ok_or_else(|| format_err!("No episodes"))
             .and_then(|row| row.try_get(0).map_err(Into::into))
     }
 
-    pub fn download_episode(&self, conn: &PodConnection, directory: &str) -> Result<Self, Error> {
+    pub async fn download_episode(
+        &self,
+        conn: &PodConnection,
+        directory: &str,
+    ) -> Result<Self, Error> {
         if !Path::new(directory).exists() {
             Err(format_err!("No such directory {}", directory))
         } else if let Ok(url) = self.epurl.parse() {
@@ -173,7 +197,7 @@ impl Episode {
             if Path::new(&outfile).exists() {
                 remove_file(&outfile)?;
             }
-            conn.dump_to_file(&url, &outfile)?;
+            conn.dump_to_file(&url, &outfile).await?;
             let path = Path::new(&outfile);
             if path.exists() {
                 let md5sum = get_md5sum(&path)?;
@@ -197,13 +221,13 @@ mod tests {
     use crate::episode::Episode;
     use crate::pgpool::PgPool;
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_episodes_get_all_episodes() {
+    async fn test_episodes_get_all_episodes() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
 
-        let eps = Episode::get_all_episodes(&pool, 1).unwrap();
+        let eps = Episode::get_all_episodes(&pool, 1).await.unwrap();
 
         assert!(eps.len() > 100);
     }
