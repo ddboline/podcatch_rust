@@ -14,6 +14,7 @@ use std::fs::File;
 use std::io::{stdout, BufRead, BufReader, Write};
 use std::iter::Iterator;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::task::spawn_blocking;
 use walkdir::WalkDir;
 
@@ -322,6 +323,7 @@ pub async fn run_google_music(
     debug!("filename_map {}", filename_map.len());
 
     let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.to_string(), m)).collect();
+    let title_map = Arc::new(title_map);
 
     let futures: Vec<_> = title_map
         .keys()
@@ -336,6 +338,7 @@ pub async fn run_google_music(
         .collect();
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
     let title_db_map: HashMap<String, _> = results?.into_iter().collect();
+    let title_db_map = Arc::new(title_db_map);
 
     let key_map: HashMap<_, _> = metadata
         .iter()
@@ -349,6 +352,7 @@ pub async fn run_google_music(
             (k, m)
         })
         .collect();
+    let key_map = Arc::new(key_map);
 
     let wdir = WalkDir::new(&config.google_music_directory);
     let entries: Vec<_> = wdir.into_iter().filter_map(Result::ok).collect();
@@ -377,94 +381,118 @@ pub async fn run_google_music(
         })
         .collect();
 
-    let mut no_tag = Vec::new();
-    for path in &all_files {
-        if !has_tag.contains_key(path) {
-            if let Some(title) = path.file_name().map(|f| f.to_string_lossy().to_string()) {
-                if let Some(items) = title_db_map.get(&title) {
-                    if items.len() == 1 {
-                        if let Some(m) = title_map.get(&title) {
-                            if m.filename.is_none() {
-                                let mut m = (*(*m)).clone();
-                                m.filename.replace(path.to_string_lossy().to_string());
-                                m.update_db(&pool).await?;
+    let futures: Vec<_> = all_files
+        .iter()
+        .filter(|path| !has_tag.contains_key(*path))
+        .map(|path| {
+            let title_map = title_map.clone();
+            let title_db_map = title_db_map.clone();
+            async move {
+                if let Some(title) = path.file_name().map(|f| f.to_string_lossy()) {
+                    if let Some(items) = title_db_map.get(title.as_ref()) {
+                        if items.len() == 1 {
+                            if let Some(m) = title_map.get(title.as_ref()) {
+                                if m.filename.is_none() {
+                                    let mut m = (*(*m)).clone();
+                                    m.filename.replace(path.to_string_lossy().to_string());
+                                    m.update_db(&pool).await?;
+                                }
+                            }
+                        } else {
+                            for item in items {
+                                if item.filename.is_none() {
+                                    debug!("no tag no filename {:?} {} {}", path, title, item.id);
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(path)
+            }
+        })
+        .collect();
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    let no_tag = results?;
+
+    let futures: Vec<_> = has_tag
+        .iter()
+        .map(|(p, t)| {
+            let key_map = key_map.clone();
+            async move {
+                if let Some(title) = t.title() {
+                    if let Some(artist) = t.artist() {
+                        if let Some(album) = t.album() {
+                            let k = MusicKey {
+                                artist: artist.to_string(),
+                                album: album.to_string(),
+                                title: title.to_string(),
+                                track_number: t.track().map(|x| x as i32),
+                            };
+                            if let Some(m) = key_map.get(&k) {
+                                if m.filename.is_none() {
+                                    let mut m = (*(*m)).clone();
+                                    m.filename.replace(p.to_string_lossy().to_string());
+                                    m.update_db(&pool).await?;
+                                }
+                                return Ok(Some((k, p)));
+                            }
+                        }
+                    }
+                }
+                Ok(None)
+            }
+        })
+        .collect();
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    let in_music_key: HashMap<_, _> = results?.into_iter().filter_map(|x| x).collect();
+
+    let futures: Vec<_> = has_tag
+        .iter()
+        .map(|(p, t)| {
+            let title_map = title_map.clone();
+            let title_db_map = title_db_map.clone();
+            async move {
+                if let Some(title) = t.title() {
+                    if let Some(items) = title_db_map.get(title) {
+                        if items.len() == 1 {
+                            if let Some(m) = title_map.get(title) {
+                                if m.filename.is_none() {
+                                    let mut m = (*(*m)).clone();
+                                    m.filename.replace(p.to_string_lossy().to_string());
+                                    m.update_db(&pool).await?;
+                                }
+                            }
+                        } else {
+                            for item in items {
+                                if item.filename.is_none() {
+                                    debug!("title no filename {:?} {} {}", p, title, item.id);
+                                }
                             }
                         }
                     } else {
-                        for item in items {
-                            if item.filename.is_none() {
-                                debug!("no tag no filename {:?} {} {}", path, title, item.id);
+                        for title_part in title.split('-') {
+                            if title_db_map.contains_key(title_part.trim()) {
+                                return Ok(None);
                             }
                         }
-                    }
-                }
-            }
-            no_tag.push(path);
-        }
-    }
-
-    let mut in_music_key = HashMap::new();
-    for (p, t) in &has_tag {
-        if let Some(title) = t.title() {
-            if let Some(artist) = t.artist() {
-                if let Some(album) = t.album() {
-                    let k = MusicKey {
-                        artist: artist.to_string(),
-                        album: album.to_string(),
-                        title: title.to_string(),
-                        track_number: t.track().map(|x| x as i32),
-                    };
-                    if let Some(m) = key_map.get(&k) {
-                        if m.filename.is_none() {
-                            let mut m = (*(*m)).clone();
-                            m.filename.replace(p.to_string_lossy().to_string());
-                            m.update_db(&pool).await?;
+                        if title_db_map.contains_key(&title.replace("--", "-")) {
+                            return Ok(None);
                         }
-                        in_music_key.insert(k, p);
-                    }
-                }
-            }
-        }
-    }
-
-    let mut not_in_metadata = Vec::new();
-    'outer: for (p, t) in &has_tag {
-        if let Some(title) = t.title() {
-            if let Some(items) = title_db_map.get(title) {
-                if items.len() == 1 {
-                    if let Some(m) = title_map.get(title) {
-                        if m.filename.is_none() {
-                            let mut m = (*(*m)).clone();
-                            m.filename.replace(p.to_string_lossy().to_string());
-                            m.update_db(&pool).await?;
+                        for key in title_db_map.keys() {
+                            if title.contains(key) {
+                                debug!("exising key :{}: , :{}:", key, title);
+                            }
                         }
-                    }
-                } else {
-                    for item in items {
-                        if item.filename.is_none() {
-                            debug!("title no filename {:?} {} {}", p, title, item.id);
-                        }
+                        debug!("no title {} {:?}", title, p);
+                        return Ok(Some(p.to_owned()));
                     }
                 }
-            } else {
-                for title_part in title.split('-') {
-                    if title_db_map.contains_key(title_part.trim()) {
-                        continue 'outer;
-                    }
-                }
-                if title_db_map.contains_key(&title.replace("--", "-")) {
-                    continue 'outer;
-                }
-                for key in title_db_map.keys() {
-                    if title.contains(key) {
-                        debug!("exising key :{}: , :{}:", key, title);
-                    }
-                }
-                debug!("no title {} {:?}", title, p);
-                not_in_metadata.push(p.to_owned());
+                Ok(None)
             }
-        }
-    }
+        })
+        .collect();
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    let not_in_metadata: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
 
     writeln!(
         stdout().lock(),
