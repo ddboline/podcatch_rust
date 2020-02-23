@@ -10,6 +10,7 @@ use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{stdout, BufRead, BufReader, Write};
 use std::iter::Iterator;
@@ -362,8 +363,8 @@ pub async fn run_google_music(
         .filter(|entry| entry.file_type().is_file())
         .filter_map(|entry| {
             let p = entry.into_path();
-            let s = p.to_string_lossy().to_string();
-            if filename_map.contains_key(&s) {
+            let s = p.to_string_lossy();
+            if filename_map.contains_key(s.as_ref()) {
                 return None;
             }
             Some(p)
@@ -392,7 +393,7 @@ pub async fn run_google_music(
                 if has_tag.contains_key(path) {
                     return Ok(None);
                 }
-                if let Some(title) = path.file_name().map(|f| f.to_string_lossy()) {
+                if let Some(title) = path.file_name().map(OsStr::to_string_lossy) {
                     if let Some(items) = title_db_map.get(title.as_ref()) {
                         if items.len() == 1 {
                             if let Some(m) = title_map.get(title.as_ref()) {

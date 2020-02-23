@@ -12,6 +12,7 @@ use crate::episode::Episode;
 use crate::exponential_retry::ExponentialRetry;
 use crate::podcast::Podcast;
 
+#[derive(Clone)]
 pub struct PodConnection {
     client: Client,
 }
