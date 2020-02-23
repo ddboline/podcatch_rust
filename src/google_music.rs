@@ -380,14 +380,18 @@ pub async fn run_google_music(
             }
         })
         .collect();
+    let has_tag = Arc::new(has_tag);
 
     let futures: Vec<_> = all_files
         .iter()
-        .filter(|path| !has_tag.contains_key(*path))
         .map(|path| {
+            let has_tag = has_tag.clone();
             let title_map = title_map.clone();
             let title_db_map = title_db_map.clone();
             async move {
+                if has_tag.contains_key(path) {
+                    return Ok(None);
+                }
                 if let Some(title) = path.file_name().map(|f| f.to_string_lossy()) {
                     if let Some(items) = title_db_map.get(title.as_ref()) {
                         if items.len() == 1 {
@@ -407,12 +411,12 @@ pub async fn run_google_music(
                         }
                     }
                 }
-                Ok(path)
+                Ok(Some(path))
             }
         })
         .collect();
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-    let no_tag = results?;
+    let no_tag: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
 
     let futures: Vec<_> = has_tag
         .iter()
