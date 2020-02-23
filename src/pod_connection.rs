@@ -1,5 +1,5 @@
 use anyhow::{format_err, Error};
-use futures_util::StreamExt;
+use futures::StreamExt;
 use reqwest::Client;
 use reqwest::Url;
 use roxmltree::{Document, NodeType};
