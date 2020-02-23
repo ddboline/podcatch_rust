@@ -50,10 +50,10 @@ impl PodcatchOpts {
 
             process_all_podcasts(&pool, &config).await?;
 
-            let mut metadata = metadata.await.expect("get_uploaded_mp3 paniced")?;
+            let metadata = metadata.await.expect("get_uploaded_mp3 paniced")?;
             run_google_music(
                 &config,
-                &mut metadata,
+                metadata,
                 opts.filename.as_ref().map(String::as_str),
                 opts.do_add,
                 &pool,

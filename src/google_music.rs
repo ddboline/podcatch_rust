@@ -3,6 +3,7 @@ use cpython::{
     exc, FromPyObject, ObjectProtocol, PyDict, PyErr, PyList, PyObject, PyResult, PyString,
     PyTuple, Python, PythonObject, ToPyObject,
 };
+use futures::future::try_join_all;
 use id3::Tag;
 use log::debug;
 use postgres_query::FromSqlRow;
@@ -265,7 +266,7 @@ pub fn upload_list_of_mp3s(config: &Config, filelist: &[PathBuf]) -> PyResult<Ve
 
 pub async fn run_google_music(
     config: &Config,
-    metadata: &mut [GoogleMusicMetadata],
+    metadata: Vec<GoogleMusicMetadata>,
     filename: Option<&str>,
     do_add: bool,
     pool: &PgPool,
@@ -296,16 +297,22 @@ pub async fn run_google_music(
         }
     }
 
-    let mut new_metadata = Vec::new();
-    for m in metadata {
-        if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool).await? {
-            m.filename = m_.filename;
-        } else {
-            m.insert_into_db(&pool).await?;
-        }
-        new_metadata.push(m);
-    }
-    let metadata = new_metadata;
+    let futures: Vec<_> = metadata
+        .into_iter()
+        .map(|mut m| {
+            let pool = pool.clone();
+            async move {
+                if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool).await? {
+                    m.filename = m_.filename;
+                } else {
+                    m.insert_into_db(&pool).await?;
+                }
+                Ok(m)
+            }
+        })
+        .collect();
+    let metadata: Result<Vec<_>, Error> = try_join_all(futures).await;
+    let metadata = metadata?;
 
     let filename_map: HashMap<String, _> = metadata
         .par_iter()
@@ -316,11 +323,19 @@ pub async fn run_google_music(
 
     let title_map: HashMap<_, _> = metadata.iter().map(|m| (m.title.to_string(), m)).collect();
 
-    let mut title_db_map = HashMap::new();
-    for t in title_map.keys() {
-        let items = GoogleMusicMetadata::by_title(t, &pool).await?;
-        title_db_map.insert(t.to_string(), items);
-    }
+    let futures: Vec<_> = title_map
+        .keys()
+        .map(|t| {
+            let t = t.to_string();
+            let pool = pool.clone();
+            async move {
+                let items = GoogleMusicMetadata::by_title(&t, &pool).await?;
+                Ok((t, items))
+            }
+        })
+        .collect();
+    let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+    let title_db_map: HashMap<String, _> = results?.into_iter().collect();
 
     let key_map: HashMap<_, _> = metadata
         .iter()
@@ -372,7 +387,7 @@ pub async fn run_google_music(
                             if m.filename.is_none() {
                                 let mut m = (*(*m)).clone();
                                 m.filename.replace(path.to_string_lossy().to_string());
-                                m.update_db(&pool).await.unwrap();
+                                m.update_db(&pool).await?;
                             }
                         }
                     } else {
@@ -403,7 +418,7 @@ pub async fn run_google_music(
                         if m.filename.is_none() {
                             let mut m = (*(*m)).clone();
                             m.filename.replace(p.to_string_lossy().to_string());
-                            m.update_db(&pool).await.unwrap();
+                            m.update_db(&pool).await?;
                         }
                         in_music_key.insert(k, p);
                     }
@@ -421,7 +436,7 @@ pub async fn run_google_music(
                         if m.filename.is_none() {
                             let mut m = (*(*m)).clone();
                             m.filename.replace(p.to_string_lossy().to_string());
-                            m.update_db(&pool).await.unwrap();
+                            m.update_db(&pool).await?;
                         }
                     }
                 } else {
