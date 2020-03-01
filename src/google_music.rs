@@ -9,18 +9,19 @@ use log::debug;
 use postgres_query::FromSqlRow;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::fs::File;
-use std::io::{stdout, BufRead, BufReader, Write};
-use std::iter::Iterator;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    ffi::OsStr,
+    fs::File,
+    io::{stdout, BufRead, BufReader, Write},
+    iter::Iterator,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tokio::task::spawn_blocking;
 use walkdir::WalkDir;
 
-use crate::config::Config;
-use crate::pgpool::PgPool;
+use crate::{config::Config, pgpool::PgPool};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct MusicKey {

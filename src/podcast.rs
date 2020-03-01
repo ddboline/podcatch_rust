@@ -3,8 +3,7 @@ use postgres_query::FromSqlRow;
 use reqwest::Url;
 use std::collections::HashMap;
 
-use crate::pgpool::PgPool;
-use crate::pod_connection::PodConnection;
+use crate::{pgpool::PgPool, pod_connection::PodConnection};
 
 #[derive(Default, Clone, Debug, FromSqlRow)]
 pub struct Podcast {
@@ -123,9 +122,7 @@ impl Podcast {
 mod tests {
     use std::io::{stdout, Write};
 
-    use crate::config::Config;
-    use crate::pgpool::PgPool;
-    use crate::podcast::Podcast;
+    use crate::{config::Config, pgpool::PgPool, podcast::Podcast};
 
     #[tokio::test]
     #[ignore]

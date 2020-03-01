@@ -1,21 +1,25 @@
 use anyhow::{format_err, Error};
 use futures::future::try_join_all;
 use reqwest::Url;
-use std::collections::HashMap;
-use std::io::{stdout, Write};
-use std::path::Path;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    io::{stdout, Write},
+    path::Path,
+    sync::Arc,
+};
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
 
-use crate::config::Config;
-use crate::episode::Episode;
-use crate::episode_status::EpisodeStatus;
-use crate::get_md5sum;
-use crate::google_music::{run_google_music, upload_list_of_mp3s, GoogleMusicMetadata};
-use crate::pgpool::PgPool;
-use crate::pod_connection::PodConnection;
-use crate::podcast::Podcast;
+use crate::{
+    config::Config,
+    episode::Episode,
+    episode_status::EpisodeStatus,
+    get_md5sum,
+    google_music::{run_google_music, upload_list_of_mp3s, GoogleMusicMetadata},
+    pgpool::PgPool,
+    pod_connection::PodConnection,
+    podcast::Podcast,
+};
 
 #[derive(StructOpt, Debug)]
 pub struct PodcatchOpts {

@@ -1,7 +1,9 @@
 use anyhow::Error;
 use async_trait::async_trait;
-use rand::distributions::{Distribution, Uniform};
-use rand::thread_rng;
+use rand::{
+    distributions::{Distribution, Uniform},
+    thread_rng,
+};
 use reqwest::{Client, Response, Url};
 use tokio::time::{delay_for, Duration};
 

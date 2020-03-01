@@ -1,16 +1,11 @@
 use anyhow::{format_err, Error};
 use futures::StreamExt;
-use reqwest::Client;
-use reqwest::Url;
+use reqwest::{Client, Url};
 use roxmltree::{Document, NodeType};
-use std::collections::HashMap;
-use std::path::Path;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use std::{collections::HashMap, path::Path};
+use tokio::{fs::File, io::AsyncWriteExt};
 
-use crate::episode::Episode;
-use crate::exponential_retry::ExponentialRetry;
-use crate::podcast::Podcast;
+use crate::{episode::Episode, exponential_retry::ExponentialRetry, podcast::Podcast};
 
 #[derive(Clone)]
 pub struct PodConnection {
@@ -166,15 +161,12 @@ impl ExponentialRetry for PodConnection {
 #[cfg(test)]
 mod tests {
     use reqwest::Url;
-    use std::collections::HashMap;
-    use std::fs::remove_file;
+    use std::{collections::HashMap, fs::remove_file};
 
-    use crate::config::Config;
-    use crate::episode::Episode;
-    use crate::exponential_retry::ExponentialRetry;
-    use crate::pgpool::PgPool;
-    use crate::pod_connection::PodConnection;
-    use crate::podcast::Podcast;
+    use crate::{
+        config::Config, episode::Episode, exponential_retry::ExponentialRetry, pgpool::PgPool,
+        pod_connection::PodConnection, podcast::Podcast,
+    };
 
     #[tokio::test]
     #[ignore]

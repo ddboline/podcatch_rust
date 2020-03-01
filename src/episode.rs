@@ -2,13 +2,11 @@ use anyhow::{format_err, Error};
 use log::debug;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
-use std::fs::remove_file;
-use std::path::Path;
+use std::{fs::remove_file, path::Path};
 
-use crate::episode_status::EpisodeStatus;
-use crate::get_md5sum;
-use crate::pgpool::PgPool;
-use crate::pod_connection::PodConnection;
+use crate::{
+    episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool, pod_connection::PodConnection,
+};
 
 #[derive(Default, Clone, Debug, FromSqlRow)]
 pub struct Episode {
@@ -217,9 +215,7 @@ impl Episode {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::Config;
-    use crate::episode::Episode;
-    use crate::pgpool::PgPool;
+    use crate::{config::Config, episode::Episode, pgpool::PgPool};
 
     #[tokio::test]
     #[ignore]
