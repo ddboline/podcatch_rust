@@ -60,7 +60,7 @@ impl PodcatchOpts {
             run_google_music(
                 &config,
                 metadata,
-                opts.filename.as_ref().map(String::as_str),
+                opts.filename.as_deref(),
                 opts.do_add,
                 &pool,
             )
