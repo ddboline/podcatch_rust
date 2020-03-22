@@ -146,14 +146,14 @@ async fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Erro
             .collect();
         let update_episodes: Vec<_> = episode_list
             .iter()
-            .filter(|e| e.status != EpisodeStatus::Ready)
+            .filter(|e| e.status != EpisodeStatus::Ready && e.status != EpisodeStatus::Downloaded)
             .collect();
 
         let stdout = stdout();
 
         writeln!(
             stdout.lock(),
-            "{} {} {} {} {}",
+            "podcast {} {} {} {} {}",
             pod.castname,
             max_epid,
             episode_map.len(),
@@ -222,22 +222,22 @@ async fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Erro
                         .epguid
                         .as_ref()
                         .ok_or_else(|| format_err!("no md5sum"))?;
-                    if epguid.len() == 32 {
-                        output.push(format!("{:?}", epi));
-                    } else if let Some(directory) = pod.directory.as_ref() {
-                        let fname = format!("{}/{}", directory, url);
-                        let path = Path::new(&fname);
-                        if path.exists() {
-                            if let Ok(md5sum) = get_md5sum(&path) {
-                                let mut p = epi.clone();
-                                output.push(format!("update md5sum {} {}", fname, md5sum));
-                                p.epguid = Some(md5sum);
-                                p.update_episode(&pool).await?;
+                    if let Some(directory) = pod.directory.as_ref() {
+                        if epguid.len() != 32 {
+                            let fname = format!("{}/{}", directory, url);
+                            let path = Path::new(&fname);
+                            if path.exists() {
+                                if let Ok(md5sum) = get_md5sum(&path) {
+                                    let mut p = epi.clone();
+                                    output.push(format!("update md5sum {} {}", fname, md5sum));
+                                    p.epguid = Some(md5sum);
+                                    p.update_episode(&pool).await?;
+                                }
+                            } else if let Ok(url_) = epi.epurl.parse::<Url>() {
+                                output.push(format!("download {:?} {}", url_, fname));
+                                let new_epi = epi.download_episode(&pod_conn, directory).await?;
+                                new_epi.update_episode(&pool).await?;
                             }
-                        } else if let Ok(url_) = epi.epurl.parse::<Url>() {
-                            output.push(format!("download {:?} {}", url_, fname));
-                            let new_epi = epi.download_episode(&pod_conn, directory).await?;
-                            new_epi.update_episode(&pool).await?;
                         }
                     }
                     Ok(output)
