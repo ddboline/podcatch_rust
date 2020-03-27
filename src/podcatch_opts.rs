@@ -120,10 +120,7 @@ async fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Erro
 
                 let episode_map: Result<HashMap<String, Episode>, Error> = episodes
                     .into_iter()
-                    .map(|e| {
-                        let basename = e.url_basename()?;
-                        Ok((basename, e))
-                    })
+                    .map(|e| Ok((e.title.to_string(), e)))
                     .collect();
 
                 let episode_map = episode_map?;

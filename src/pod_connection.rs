@@ -43,28 +43,22 @@ impl PodConnection {
                 ..Episode::default()
             };
 
-            let url_exists = if let Ok(url) = ep.url_basename() {
-                filter_urls.contains_key(&url)
-            } else {
-                false
-            };
+            let url_exists = filter_urls.contains_key(&ep.title);
 
             if !url_exists {
                 return Some(ep);
-            } else if let Ok(url) = ep.url_basename() {
-                if let Some(epi) = filter_urls.get(&url) {
-                    if let Some(title_) = title {
-                        if title_ == "Wedgie diplomacy: Bugle 4083" {
-                            return None;
-                        }
-                        if &epi.title != title_ {
-                            let mut p = epi.clone();
-                            p.title = title_.to_string();
-                            return Some(p);
-                        } else if let Some(epguid) = epi.epguid.as_ref() {
-                            if epguid.len() != 32 {
-                                return Some(epi.clone());
-                            }
+            } else if let Some(epi) = filter_urls.get(&ep.title) {
+                if let Some(title_) = title {
+                    if title_ == "Wedgie diplomacy: Bugle 4083" {
+                        return None;
+                    }
+                    if &epi.title != title_ {
+                        let mut p = epi.clone();
+                        p.title = title_.to_string();
+                        return Some(p);
+                    } else if let Some(epguid) = epi.epguid.as_ref() {
+                        if epguid.len() != 32 {
+                            return Some(epi.clone());
                         }
                     }
                 }
