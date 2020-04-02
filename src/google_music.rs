@@ -7,13 +7,12 @@ use futures::future::try_join_all;
 use id3::Tag;
 use log::debug;
 use postgres_query::FromSqlRow;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
 use std::{
     collections::HashMap,
     ffi::OsStr,
     fs::File,
-    io::{stdout, BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Write},
     iter::Iterator,
     path::{Path, PathBuf},
     sync::Arc,
@@ -21,7 +20,7 @@ use std::{
 use tokio::task::spawn_blocking;
 use walkdir::WalkDir;
 
-use crate::{config::Config, pgpool::PgPool};
+use crate::{config::Config, pgpool::PgPool, stdout_channel::StdoutChannel};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct MusicKey {
@@ -273,6 +272,7 @@ pub async fn run_google_music(
     filename: Option<&str>,
     do_add: bool,
     pool: &PgPool,
+    stdout: &StdoutChannel,
 ) -> Result<(), Error> {
     if let Some(fname) = filename {
         if Path::new(fname).exists() && do_add {
@@ -286,12 +286,13 @@ pub async fn run_google_music(
                 .collect();
             let flist = flist?;
             let config = config.clone();
+            let stdout = stdout.clone();
             return spawn_blocking(move || {
                 let ids =
                     upload_list_of_mp3s(&config, &flist).map_err(|e| format_err!("{:?}", e))?;
                 for id in ids {
                     if let Some(id) = id {
-                        writeln!(stdout().lock(), "upload {}", id)?;
+                        stdout.send(format!("upload {}", id))?;
                     }
                 }
                 Ok(())
@@ -318,7 +319,7 @@ pub async fn run_google_music(
     let metadata = metadata?;
 
     let filename_map: HashMap<String, _> = metadata
-        .par_iter()
+        .iter()
         .filter_map(|m| m.filename.as_ref().map(|f| (f.to_string(), m)))
         .collect();
 
@@ -360,7 +361,7 @@ pub async fn run_google_music(
     let entries: Vec<_> = wdir.into_iter().filter_map(Result::ok).collect();
 
     let all_files: Vec<_> = entries
-        .into_par_iter()
+        .into_iter()
         .filter(|entry| entry.file_type().is_file())
         .filter_map(|entry| {
             let p = entry.into_path();
@@ -373,7 +374,7 @@ pub async fn run_google_music(
         .collect();
 
     let has_tag: HashMap<_, _> = all_files
-        .par_iter()
+        .iter()
         .filter_map(|path| {
             if let Ok(tag) = Tag::read_from_path(&path) {
                 Some((path.clone(), tag))
@@ -382,6 +383,7 @@ pub async fn run_google_music(
             }
         })
         .collect();
+
     let has_tag = Arc::new(has_tag);
 
     let futures: Vec<_> = all_files
@@ -500,15 +502,14 @@ pub async fn run_google_music(
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
     let not_in_metadata: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
 
-    writeln!(
-        stdout().lock(),
+    stdout.send(format!(
         "all:{} tag:{} in_music_key:{} not_in_metadata:{} no_tag:{}",
         all_files.len(),
         has_tag.len(),
         in_music_key.len(),
         not_in_metadata.len(),
         no_tag.len(),
-    )?;
+    ))?;
 
     if let Some(fname) = filename {
         let mut f = File::create(fname)?;

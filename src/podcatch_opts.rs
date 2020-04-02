@@ -1,12 +1,7 @@
 use anyhow::{format_err, Error};
 use futures::future::try_join_all;
 use reqwest::Url;
-use std::{
-    collections::HashMap,
-    io::{stdout, Write},
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::HashMap, path::Path, sync::Arc};
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
 
@@ -19,6 +14,7 @@ use crate::{
     pgpool::PgPool,
     pod_connection::PodConnection,
     podcast::Podcast,
+    stdout_channel::StdoutChannel,
 };
 
 #[derive(StructOpt, Debug)]
@@ -47,6 +43,8 @@ impl PodcatchOpts {
 
         let config = Config::init_config()?;
         let pool = PgPool::new(&config.database_url);
+        let stdout = StdoutChannel::new();
+        let task = stdout.spawn_stdout_task();
 
         if opts.do_google_music {
             let metadata = {
@@ -54,7 +52,7 @@ impl PodcatchOpts {
                 spawn_blocking(move || GoogleMusicMetadata::get_uploaded_mp3(&config))
             };
 
-            process_all_podcasts(&pool, &config).await?;
+            process_all_podcasts(&pool, &config, &stdout).await?;
 
             let metadata = metadata.await.expect("get_uploaded_mp3 paniced")?;
             run_google_music(
@@ -63,16 +61,17 @@ impl PodcatchOpts {
                 opts.filename.as_deref(),
                 opts.do_add,
                 &pool,
+                &stdout,
             )
             .await?;
         } else if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid).await? {
-                    writeln!(stdout().lock(), "{:?}", eps)?;
+                    stdout.send(format!("{:?}", eps))?;
                 }
             } else {
                 for pod in &Podcast::get_all_podcasts(&pool).await? {
-                    writeln!(stdout().lock(), "{:?}", pod)?;
+                    stdout.send(format!("{:?}", pod))?;
                 }
             }
         } else if opts.do_add {
@@ -86,25 +85,24 @@ impl PodcatchOpts {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
                         format!("{}/{}", home_dir, podcast_name)
                     });
-                    writeln!(
-                        stdout().lock(),
-                        "Add {} {:?} {}",
-                        podcast_name,
-                        podcast_url,
-                        castid
-                    )?;
+                    stdout.send(format!("Add {} {:?} {}", podcast_name, podcast_url, castid))?;
                     Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory)
                         .await?;
                 }
             }
         } else {
-            process_all_podcasts(&pool, &config).await?;
+            process_all_podcasts(&pool, &config, &stdout).await?;
         }
-        Ok(())
+        stdout.close().await?;
+        task.await?
     }
 }
 
-async fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Error> {
+async fn process_all_podcasts(
+    pool: &PgPool,
+    config: &Config,
+    stdout: &StdoutChannel,
+) -> Result<(), Error> {
     let pod_conn = PodConnection::new();
 
     let futures: Vec<_> = Podcast::get_all_podcasts(&pool)
@@ -146,17 +144,14 @@ async fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Erro
             .filter(|e| e.status != EpisodeStatus::Ready && e.status != EpisodeStatus::Downloaded)
             .collect();
 
-        let stdout = stdout();
-
-        writeln!(
-            stdout.lock(),
+        stdout.send(format!(
             "podcast {} {} {} {} {}",
             pod.castname,
             max_epid,
             episode_map.len(),
             new_episodes.len(),
             update_episodes.len(),
-        )?;
+        ))?;
 
         let futures: Vec<_> = new_episodes
             .into_iter()
@@ -204,7 +199,7 @@ async fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Erro
             .collect();
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         for line in results?.into_iter().filter_map(|x| x) {
-            writeln!(stdout.lock(), "{}", line.join("\n"))?;
+            stdout.send(format!("{}", line.join("\n")))?;
         }
 
         let futures: Vec<_> = update_episodes
@@ -243,7 +238,7 @@ async fn process_all_podcasts(pool: &PgPool, config: &Config) -> Result<(), Erro
             .collect();
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         for line in results? {
-            writeln!(stdout.lock(), "{}", line.join("\n"))?;
+            stdout.send(format!("{}", line.join("\n")))?;
         }
     }
     Ok(())
