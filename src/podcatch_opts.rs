@@ -199,7 +199,7 @@ async fn process_all_podcasts(
             .collect();
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         for line in results?.into_iter().filter_map(|x| x) {
-            stdout.send(format!("{}", line.join("\n")))?;
+            stdout.send(line.join("\n"))?;
         }
 
         let futures: Vec<_> = update_episodes
@@ -238,7 +238,7 @@ async fn process_all_podcasts(
             .collect();
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         for line in results? {
-            stdout.send(format!("{}", line.join("\n")))?;
+            stdout.send(line.join("\n"))?;
         }
     }
     Ok(())
