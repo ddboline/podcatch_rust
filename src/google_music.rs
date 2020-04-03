@@ -280,8 +280,8 @@ pub async fn run_google_music(
                 .lines()
                 .map(|l| {
                     let line = l?;
-                    let p = Path::new(&line);
-                    Ok(p.to_path_buf())
+                    let p: PathBuf = line.into();
+                    Ok(p)
                 })
                 .collect();
             let flist = flist?;
