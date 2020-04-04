@@ -131,12 +131,11 @@ impl PodConnection {
         Ok(episodes)
     }
 
-    pub async fn dump_to_file(&self, url: &Url, outfile: &str) -> Result<(), Error> {
-        let outpath = Path::new(outfile);
+    pub async fn dump_to_file(&self, url: &Url, outpath: &Path) -> Result<(), Error> {
         if outpath.exists() {
             Err(format_err!("File exists"))
         } else {
-            let mut f = File::create(outfile).await?;
+            let mut f = File::create(outpath).await?;
             let mut byte_stream = self.get(url).await?.bytes_stream();
             while let Some(item) = byte_stream.next().await {
                 f.write_all(&item?).await?;
@@ -155,7 +154,7 @@ impl ExponentialRetry for PodConnection {
 #[cfg(test)]
 mod tests {
     use reqwest::Url;
-    use std::{collections::HashMap, fs::remove_file};
+    use std::{collections::HashMap, fs::remove_file, path::Path};
 
     use crate::{
         config::Config, episode::Episode, exponential_retry::ExponentialRetry, pgpool::PgPool,
@@ -210,7 +209,11 @@ mod tests {
         let url = "https://dts.podtrac.com/redirect.mp3/api.entale.co/download/47015acd-f383-416d-8934-344cd944bfab/6215e4ba-ea1a-43e6-8d76-3de84fa5f52e/media.mp3";
         let url: Url = url.parse().unwrap();
         let pod_conn = PodConnection::new();
-        if pod_conn.dump_to_file(&url, "/tmp/temp.mp3").await.is_ok() {
+        if pod_conn
+            .dump_to_file(&url, &Path::new("/tmp/temp.mp3"))
+            .await
+            .is_ok()
+        {
             remove_file("/tmp/temp.mp3").unwrap();
         }
         assert!(true);

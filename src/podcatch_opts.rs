@@ -160,6 +160,7 @@ async fn process_all_podcasts(
                 let pod_conn = pod_conn.clone();
                 async move {
                     if let Some(directory) = pod.directory.as_ref() {
+                        let directory_path = Path::new(directory);
                         let mut output = vec![format!(
                             "new download {} {} {}",
                             epi.epurl,
@@ -173,7 +174,7 @@ async fn process_all_podcasts(
                             new_epi.title = epi.title.to_string();
                             new_epi.update_episode(&pool).await?;
                         } else {
-                            let new_epi = epi.download_episode(&pod_conn, directory).await?;
+                            let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
                             if new_epi.epguid.is_some() {
                                 new_epi.insert_episode(&pool).await?;
                                 if directory.contains(&config.google_music_directory) {
@@ -185,6 +186,7 @@ async fn process_all_podcasts(
                                             .map_err(|e| format_err!("{:?}", e))?;
                                         output.push(format!("ids {:?}", l));
                                     }
+                                } else if directory.contains("The_Bugle") {
                                 }
                             } else {
                                 output.push(format!("No md5sum? {:?}", new_epi));
@@ -215,9 +217,10 @@ async fn process_all_podcasts(
                         .as_ref()
                         .ok_or_else(|| format_err!("no md5sum"))?;
                     if let Some(directory) = pod.directory.as_ref() {
+                        let directory_path = Path::new(directory);
                         if epguid.len() != 32 {
-                            let fname = format!("{}/{}", directory, url);
-                            let path = Path::new(&fname);
+                            let path = directory_path.join(url);
+                            let fname = path.to_string_lossy();
                             if path.exists() {
                                 if let Ok(md5sum) = get_md5sum(&path) {
                                     let mut p = epi.clone();
@@ -227,7 +230,8 @@ async fn process_all_podcasts(
                                 }
                             } else if let Ok(url_) = epi.epurl.parse::<Url>() {
                                 output.push(format!("download {:?} {}", url_, fname));
-                                let new_epi = epi.download_episode(&pod_conn, directory).await?;
+                                let new_epi =
+                                    epi.download_episode(&pod_conn, directory_path).await?;
                                 new_epi.update_episode(&pool).await?;
                             }
                         }

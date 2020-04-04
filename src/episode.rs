@@ -2,7 +2,8 @@ use anyhow::{format_err, Error};
 use log::debug;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
-use std::{fs::remove_file, path::Path};
+use std::path::Path;
+use tokio::fs::remove_file;
 
 use crate::{
     episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool, pod_connection::PodConnection,
@@ -21,7 +22,7 @@ pub struct Episode {
 
 impl Episode {
     pub fn url_basename(&self) -> Result<String, Error> {
-        if self.epurl.ends_with("media.mp3") {
+        if self.epurl.ends_with("media.mp3") || self.epurl.contains("https://feeds.acast.com") {
             let basename: String = self
                 .title
                 .to_lowercase()
@@ -186,21 +187,24 @@ impl Episode {
     pub async fn download_episode(
         &self,
         conn: &PodConnection,
-        directory: &str,
+        directory: &Path,
     ) -> Result<Self, Error> {
-        if !Path::new(directory).exists() {
-            Err(format_err!("No such directory {}", directory))
+        if !directory.exists() {
+            Err(format_err!(
+                "No such directory {}",
+                directory.to_string_lossy()
+            ))
         } else if let Ok(url) = self.epurl.parse() {
-            let outfile = format!("{}/{}", directory, self.url_basename()?);
-            if Path::new(&outfile).exists() {
-                remove_file(&outfile)?;
+            let outfile = directory.join(self.url_basename()?);
+            if outfile.exists() {
+                remove_file(&outfile).await?;
             }
             conn.dump_to_file(&url, &outfile).await?;
             let path = Path::new(&outfile);
             if path.exists() {
                 let md5sum = get_md5sum(&path)?;
                 let mut p = self.clone();
-                debug!("{} {}", outfile, md5sum);
+                debug!("{:?} {}", outfile, md5sum);
                 p.epguid.replace(md5sum);
                 p.status = EpisodeStatus::Downloaded;
                 Ok(p)
