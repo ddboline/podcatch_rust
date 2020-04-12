@@ -1,11 +1,13 @@
 use anyhow::{format_err, Error};
 use std::{env::var, ops::Deref, path::Path, sync::Arc};
 
+use crate::stack_string::StackString;
+
 #[derive(Default, Debug)]
 pub struct ConfigInner {
-    pub database_url: String,
-    pub google_music_directory: String,
-    pub user: String,
+    pub database_url: StackString,
+    pub google_music_directory: StackString,
+    pub user: StackString,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -14,7 +16,7 @@ pub struct Config(Arc<ConfigInner>);
 macro_rules! set_config {
     ($s:ident, $id:ident) => {
         if let Ok($id) = var(&stringify!($id).to_uppercase()) {
-            $s.$id = $id;
+            $s.$id = $id.into();
         }
     };
 }

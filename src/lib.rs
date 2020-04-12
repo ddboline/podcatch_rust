@@ -19,6 +19,7 @@ pub mod pod_connection;
 pub mod podcast;
 pub mod podcatch_opts;
 pub mod stdout_channel;
+pub mod stack_string;
 
 use anyhow::Error;
 use checksums::{hash_file, Algorithm};

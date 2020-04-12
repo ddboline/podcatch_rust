@@ -33,6 +33,8 @@ dirs = "2.0"
 tokio = {version = "0.2", features=["full"]}
 async-trait = "0.1"
 futures = "0.3"
+derive_more = "0.99"
+inlinable_string = "0.1"
 
 [[bin]]
 name = "podcatch-rust"

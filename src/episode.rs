@@ -7,24 +7,25 @@ use tokio::fs::remove_file;
 
 use crate::{
     episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool, pod_connection::PodConnection,
+    stack_string::StackString,
 };
 
 #[derive(Default, Clone, Debug, FromSqlRow)]
 pub struct Episode {
     pub castid: i32,
     pub episodeid: i32,
-    pub title: String,
-    pub epurl: String,
-    pub enctype: String,
+    pub title: StackString,
+    pub epurl: StackString,
+    pub enctype: StackString,
     pub status: EpisodeStatus,
-    pub epguid: Option<String>,
+    pub epguid: Option<StackString>,
 }
 
 impl Episode {
     pub fn url_basename(&self) -> Result<String, Error> {
-        if self.epurl.ends_with("media.mp3") || self.epurl.contains("https://feeds.acast.com") {
+        if self.epurl.as_str().ends_with("media.mp3") || self.epurl.as_str().contains("https://feeds.acast.com") {
             let basename: String = self
-                .title
+                .title.as_str()
                 .to_lowercase()
                 .chars()
                 .filter_map(|c| match c {
@@ -34,9 +35,9 @@ impl Episode {
                 })
                 .collect();
             Ok(format!("{}.mp3", basename))
-        } else if self.epurl.contains("newrustacean/") {
+        } else if self.epurl.as_str().contains("newrustacean/") {
             let basename: Vec<_> = self
-                .epurl
+                .epurl.as_str()
                 .split("newrustacean/")
                 .last()
                 .ok_or_else(|| format_err!("..."))?
@@ -45,7 +46,7 @@ impl Episode {
             let basename: String = basename.join("_");
             Ok(basename)
         } else {
-            let epurl: Url = self.epurl.parse()?;
+            let epurl: Url = self.epurl.as_str().parse()?;
             epurl
                 .path()
                 .split('/')
@@ -194,7 +195,7 @@ impl Episode {
                 "No such directory {}",
                 directory.to_string_lossy()
             ))
-        } else if let Ok(url) = self.epurl.parse() {
+        } else if let Ok(url) = self.epurl.as_str().parse() {
             let outfile = directory.join(self.url_basename()?);
             if outfile.exists() {
                 remove_file(&outfile).await?;
@@ -205,7 +206,7 @@ impl Episode {
                 let md5sum = get_md5sum(&path)?;
                 let mut p = self.clone();
                 debug!("{:?} {}", outfile, md5sum);
-                p.epguid.replace(md5sum);
+                p.epguid.replace(md5sum.into());
                 p.status = EpisodeStatus::Downloaded;
                 Ok(p)
             } else {
@@ -225,7 +226,7 @@ mod tests {
     #[ignore]
     async fn test_episodes_get_all_episodes() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
+        let pool = PgPool::new(config.database_url.as_str());
 
         let eps = Episode::get_all_episodes(&pool, 1).await.unwrap();
 

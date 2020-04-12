@@ -4,13 +4,14 @@ use reqwest::Url;
 use std::collections::HashMap;
 
 use crate::{pgpool::PgPool, pod_connection::PodConnection};
+use crate::stack_string::StackString;
 
 #[derive(Default, Clone, Debug, FromSqlRow)]
 pub struct Podcast {
     pub castid: i32,
-    pub castname: String,
-    pub feedurl: String,
-    pub directory: Option<String>,
+    pub castname: StackString,
+    pub feedurl: StackString,
+    pub directory: Option<StackString>,
 }
 
 impl Podcast {
@@ -28,9 +29,9 @@ impl Podcast {
         } else {
             let pod = Self {
                 castid: cid,
-                castname: cname.to_string(),
-                feedurl: furl.to_string(),
-                directory: Some(dir.to_string()),
+                castname: cname.into(),
+                feedurl: furl.as_str().into(),
+                directory: Some(dir.into()),
             };
             let episodes = PodConnection::new()
                 .parse_feed(&pod, &HashMap::new(), 0)
@@ -128,15 +129,15 @@ mod tests {
     #[ignore]
     async fn test_podcasts_from_index() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
+        let pool = PgPool::new(config.database_url.as_str());
         let p = Podcast::from_index(&pool, 19).await.unwrap().unwrap();
         debug!("{:?}", p);
         assert_eq!(
-            p.castname,
+            p.castname.as_str(),
             "The Current Song of the Day - Minnesota Public Radio"
         );
         assert_eq!(
-            p.feedurl,
+            p.feedurl.as_str(),
             "http://minnesota.publicradio.org/tools/podcasts/song-of-the-day.php"
         );
     }
@@ -145,13 +146,13 @@ mod tests {
     #[ignore]
     async fn test_podcasts_from_feedurl() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
+        let pool = PgPool::new(config.database_url.as_str());
         let p = Podcast::from_feedurl(&pool, "http://nightvale.libsyn.com/rss")
             .await
             .unwrap()
             .unwrap();
         debug!("{:?}", p);
         assert_eq!(p.castid, 24);
-        assert_eq!(p.castname, "Welcome to Night Vale");
+        assert_eq!(p.castname.as_str(), "Welcome to Night Vale");
     }
 }

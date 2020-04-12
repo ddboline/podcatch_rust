@@ -6,6 +6,7 @@ use std::{collections::HashMap, path::Path};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::{episode::Episode, exponential_retry::ExponentialRetry, podcast::Podcast};
+use crate::stack_string::StackString;
 
 #[derive(Clone)]
 pub struct PodConnection {
@@ -27,19 +28,19 @@ impl PodConnection {
 
     async fn get_current_episode(
         podcast: &Podcast,
-        title: Option<&String>,
-        epurl: Option<&String>,
-        enctype: Option<&String>,
-        filter_urls: &HashMap<String, Episode>,
+        title: Option<&str>,
+        epurl: Option<&str>,
+        enctype: Option<&str>,
+        filter_urls: &HashMap<StackString, Episode>,
         latest_epid: i32,
     ) -> Option<Episode> {
         if let Some(epurl) = epurl.as_ref() {
             let ep = Episode {
-                title: title.map_or_else(|| "Unknown".to_string(), ToString::to_string),
+                title: title.map_or_else(|| "Unknown".into(), Into::into),
                 castid: podcast.castid,
                 episodeid: latest_epid,
-                epurl: (*epurl).to_string(),
-                enctype: enctype.map_or_else(|| "".to_string(), ToString::to_string),
+                epurl: (*epurl).into(),
+                enctype: enctype.map_or_else(|| "".into(), Into::into),
                 ..Episode::default()
             };
 
@@ -52,9 +53,9 @@ impl PodConnection {
                     if title_ == "Wedgie diplomacy: Bugle 4083" {
                         return None;
                     }
-                    if &epi.title != title_ {
+                    if epi.title.as_str() != title_ {
                         let mut p = epi.clone();
-                        p.title = title_.to_string();
+                        p.title = title_.into();
                         return Some(p);
                     } else if let Some(epguid) = epi.epguid.as_ref() {
                         if epguid.len() != 32 {
@@ -70,26 +71,26 @@ impl PodConnection {
     pub async fn parse_feed(
         &self,
         podcast: &Podcast,
-        filter_urls: &HashMap<String, Episode>,
+        filter_urls: &HashMap<StackString, Episode>,
         mut latest_epid: i32,
     ) -> Result<Vec<Episode>, Error> {
-        let url = podcast.feedurl.parse()?;
+        let url = podcast.feedurl.as_str().parse()?;
         let text = self.get(&url).await?.text().await?;
         let doc = Document::parse(&text)?;
 
         let mut episodes = Vec::new();
-        let mut title: Option<String> = None;
-        let mut epurl: Option<String> = None;
-        let mut enctype: Option<String> = None;
+        let mut title: Option<StackString> = None;
+        let mut epurl: Option<StackString> = None;
+        let mut enctype: Option<StackString> = None;
 
         for d in doc.root().descendants() {
             if d.node_type() == NodeType::Element && d.tag_name().name() == "title" {
                 if epurl.is_some() {
                     if let Some(epi) = Self::get_current_episode(
                         &podcast,
-                        title.as_ref(),
-                        epurl.as_ref(),
-                        enctype.as_ref(),
+                        title.as_ref().map(StackString::as_str),
+                        epurl.as_ref().map(StackString::as_str),
+                        enctype.as_ref().map(StackString::as_str),
                         &filter_urls,
                         latest_epid,
                     )
@@ -103,13 +104,13 @@ impl PodConnection {
                     latest_epid += 1;
                 }
                 if let Some(t) = d.text() {
-                    title = Some(t.to_string());
+                    title = Some(t.into());
                 }
             }
             for a in d.attributes() {
                 match a.name() {
-                    "url" => epurl = Some(a.value().to_string()),
-                    "type" => enctype = Some(a.value().to_string()),
+                    "url" => epurl = Some(a.value().into()),
+                    "type" => enctype = Some(a.value().into()),
                     _ => (),
                 }
             }
@@ -117,9 +118,9 @@ impl PodConnection {
 
         if let Some(epi) = Self::get_current_episode(
             &podcast,
-            title.as_ref(),
-            epurl.as_ref(),
-            enctype.as_ref(),
+            title.as_ref().map(StackString::as_str),
+            epurl.as_ref().map(StackString::as_str),
+            enctype.as_ref().map(StackString::as_str),
             &filter_urls,
             latest_epid,
         )
@@ -158,16 +159,16 @@ mod tests {
 
     use crate::{
         config::Config, episode::Episode, exponential_retry::ExponentialRetry, pgpool::PgPool,
-        pod_connection::PodConnection, podcast::Podcast,
+        pod_connection::PodConnection, podcast::Podcast, stack_string::StackString,
     };
 
     #[tokio::test]
     #[ignore]
     async fn test_pod_connection_get() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
+        let pool = PgPool::new(config.database_url.as_str());
         let pod = Podcast::from_index(&pool, 1).await.unwrap().unwrap();
-        let url: Url = pod.feedurl.parse().unwrap();
+        let url: Url = pod.feedurl.as_str().parse().unwrap();
         let conn = PodConnection::new();
         let resp = conn.get(&url).await.unwrap();
         let text = resp.text().await.unwrap();
@@ -179,19 +180,19 @@ mod tests {
     #[ignore]
     async fn test_pod_connection_parse_feed() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
+        let pool = PgPool::new(config.database_url.as_str());
         let current_episodes = Episode::get_all_episodes(&pool, 1).await.unwrap();
         let max_epid = current_episodes
             .iter()
             .map(|e| e.episodeid)
             .max()
             .unwrap_or(0);
-        let current_urls: HashMap<String, Episode> = current_episodes
+        let current_urls: HashMap<StackString, Episode> = current_episodes
             .into_iter()
             .map(|e| {
                 let basename = e.url_basename().unwrap();
 
-                (basename, e)
+                (basename.into(), e)
             })
             .collect();
 

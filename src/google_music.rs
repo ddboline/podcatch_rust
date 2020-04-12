@@ -21,27 +21,28 @@ use tokio::task::spawn_blocking;
 use walkdir::WalkDir;
 
 use crate::{config::Config, pgpool::PgPool, stdout_channel::StdoutChannel};
+use crate::stack_string::StackString;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct MusicKey {
-    pub artist: String,
-    pub album: String,
-    pub title: String,
+    pub artist: StackString,
+    pub album: StackString,
+    pub title: StackString,
     pub track_number: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, Clone, FromSqlRow)]
 pub struct GoogleMusicMetadata {
-    pub id: String,
-    pub title: String,
-    pub album: String,
-    pub artist: String,
+    pub id: StackString,
+    pub title: StackString,
+    pub album: StackString,
+    pub artist: StackString,
     pub track_size: i32,
-    pub album_artist: Option<String>,
+    pub album_artist: Option<StackString>,
     pub track_number: Option<i32>,
     pub disc_number: Option<i32>,
     pub total_disc_count: Option<i32>,
-    pub filename: Option<String>,
+    pub filename: Option<StackString>,
 }
 
 macro_rules! get_pydict_item_option {
@@ -175,16 +176,16 @@ impl GoogleMusicMetadata {
     }
 
     pub fn from_pydict(py: Python, dict: &PyDict) -> PyResult<Self> {
-        let id = get_pydict_item!(py, dict, id, String)?;
-        let title = get_pydict_item!(py, dict, title, String)?;
-        let album = get_pydict_item!(py, dict, album, String)?;
-        let artist = get_pydict_item!(py, dict, artist, String)?;
+        let id = get_pydict_item!(py, dict, id, String)?.into();
+        let title = get_pydict_item!(py, dict, title, String)?.into();
+        let album = get_pydict_item!(py, dict, album, String)?.into();
+        let artist = get_pydict_item!(py, dict, artist, String)?.into();
         let track_size = get_pydict_item!(py, dict, track_size, i32)?;
-        let album_artist = get_pydict_item_option!(py, dict, album_artist, String)?;
+        let album_artist = get_pydict_item_option!(py, dict, album_artist, String)?.map(Into::into);
         let track_number = get_pydict_item_option!(py, dict, track_number, i32)?;
         let disc_number = get_pydict_item_option!(py, dict, disc_number, i32)?;
         let total_disc_count = get_pydict_item_option!(py, dict, total_disc_count, i32)?;
-        let filename = get_pydict_item_option!(py, dict, filename, String)?;
+        let filename = get_pydict_item_option!(py, dict, filename, String)?.map(Into::into);
 
         let gm = Self {
             id,
@@ -218,7 +219,7 @@ fn _get_uploaded_mp3(config: &Config) -> PyResult<Vec<GoogleMusicMetadata>> {
     let mm: PyObject = google_music.call(
         py,
         "MusicManager",
-        PyTuple::new(py, &[config.user.to_py_object(py).into_object()]),
+        PyTuple::new(py, &[config.user.as_str().to_py_object(py).into_object()]),
         None,
     )?;
     let args = PyDict::new(py);
@@ -242,7 +243,7 @@ pub fn upload_list_of_mp3s(config: &Config, filelist: &[PathBuf]) -> PyResult<Ve
     let mm: PyObject = google_music.call(
         py,
         "MusicManager",
-        PyTuple::new(py, &[config.user.to_py_object(py).into_object()]),
+        PyTuple::new(py, &[config.user.as_str().to_py_object(py).into_object()]),
         None,
     )?;
     let mut results = Vec::new();
@@ -292,7 +293,7 @@ pub async fn run_google_music(
                     upload_list_of_mp3s(&config, &flist).map_err(|e| format_err!("{:?}", e))?;
                 for id in ids {
                     if let Some(id) = id {
-                        stdout.send(format!("upload {}", id))?;
+                        stdout.send(format!("upload {}", id).into())?;
                     }
                 }
                 Ok(())
@@ -306,7 +307,7 @@ pub async fn run_google_music(
         .map(|mut m| {
             let pool = pool.clone();
             async move {
-                if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool).await? {
+                if let Some(m_) = GoogleMusicMetadata::by_id(m.id.as_str(), &pool).await? {
                     m.filename = m_.filename;
                 } else {
                     m.insert_into_db(&pool).await?;
@@ -318,9 +319,9 @@ pub async fn run_google_music(
     let metadata: Result<Vec<_>, Error> = try_join_all(futures).await;
     let metadata = metadata?;
 
-    let filename_map: HashMap<String, _> = metadata
+    let filename_map: HashMap<StackString, _> = metadata
         .iter()
-        .filter_map(|m| m.filename.as_ref().map(|f| (f.to_string(), m)))
+        .filter_map(|m| m.filename.as_ref().map(|f| (f.clone(), m)))
         .collect();
 
     debug!("filename_map {}", filename_map.len());
@@ -331,25 +332,25 @@ pub async fn run_google_music(
     let futures: Vec<_> = title_map
         .keys()
         .map(|t| {
-            let t = t.to_string();
+            let t: StackString = t.into();
             let pool = pool.clone();
             async move {
-                let items = GoogleMusicMetadata::by_title(&t, &pool).await?;
+                let items = GoogleMusicMetadata::by_title(t.as_str(), &pool).await?;
                 Ok((t, items))
             }
         })
         .collect();
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-    let title_db_map: HashMap<String, _> = results?.into_iter().collect();
+    let title_db_map: HashMap<StackString, _> = results?.into_iter().collect();
     let title_db_map = Arc::new(title_db_map);
 
     let key_map: HashMap<_, _> = metadata
         .iter()
         .map(|m| {
             let k = MusicKey {
-                artist: m.artist.to_string(),
-                album: m.album.to_string(),
-                title: m.title.to_string(),
+                artist: m.artist.clone(),
+                album: m.album.clone(),
+                title: m.title.clone(),
                 track_number: m.track_number,
             };
             (k, m)
@@ -357,7 +358,7 @@ pub async fn run_google_music(
         .collect();
     let key_map = Arc::new(key_map);
 
-    let wdir = WalkDir::new(&config.google_music_directory);
+    let wdir = WalkDir::new(config.google_music_directory.as_str());
     let entries: Vec<_> = wdir.into_iter().filter_map(Result::ok).collect();
 
     let all_files: Vec<_> = entries
@@ -402,7 +403,7 @@ pub async fn run_google_music(
                             if let Some(m) = title_map.get(title.as_ref()) {
                                 if m.filename.is_none() {
                                     let mut m = (*(*m)).clone();
-                                    m.filename.replace(path.to_string_lossy().to_string());
+                                    m.filename.replace(path.to_string_lossy().to_string().into());
                                     m.update_db(&pool).await?;
                                 }
                             }
@@ -431,15 +432,15 @@ pub async fn run_google_music(
                     if let Some(artist) = t.artist() {
                         if let Some(album) = t.album() {
                             let k = MusicKey {
-                                artist: artist.to_string(),
-                                album: album.to_string(),
-                                title: title.to_string(),
+                                artist: artist.into(),
+                                album: album.into(),
+                                title: title.into(),
                                 track_number: t.track().map(|x| x as i32),
                             };
                             if let Some(m) = key_map.get(&k) {
                                 if m.filename.is_none() {
                                     let mut m = (*(*m)).clone();
-                                    m.filename.replace(p.to_string_lossy().to_string());
+                                    m.filename.replace(p.to_string_lossy().to_string().into());
                                     m.update_db(&pool).await?;
                                 }
                                 return Ok(Some((k, p)));
@@ -466,7 +467,7 @@ pub async fn run_google_music(
                             if let Some(m) = title_map.get(title) {
                                 if m.filename.is_none() {
                                     let mut m = (*(*m)).clone();
-                                    m.filename.replace(p.to_string_lossy().to_string());
+                                    m.filename.replace(p.to_string_lossy().to_string().into());
                                     m.update_db(&pool).await?;
                                 }
                             }
@@ -483,11 +484,11 @@ pub async fn run_google_music(
                                 return Ok(None);
                             }
                         }
-                        if title_db_map.contains_key(&title.replace("--", "-")) {
+                        if title_db_map.contains_key(title.replace("--", "-").as_str()) {
                             return Ok(None);
                         }
                         for key in title_db_map.keys() {
-                            if title.contains(key) {
+                            if title.contains(key.as_str()) {
                                 debug!("exising key :{}: , :{}:", key, title);
                             }
                         }
@@ -509,7 +510,7 @@ pub async fn run_google_music(
         in_music_key.len(),
         not_in_metadata.len(),
         no_tag.len(),
-    ))?;
+    ).into())?;
 
     if let Some(fname) = filename {
         let mut f = File::create(fname)?;
