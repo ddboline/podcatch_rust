@@ -20,8 +20,9 @@ use std::{
 use tokio::task::spawn_blocking;
 use walkdir::WalkDir;
 
-use crate::{config::Config, pgpool::PgPool, stdout_channel::StdoutChannel};
-use crate::stack_string::StackString;
+use crate::{
+    config::Config, pgpool::PgPool, stack_string::StackString, stdout_channel::StdoutChannel,
+};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct MusicKey {
@@ -403,7 +404,8 @@ pub async fn run_google_music(
                             if let Some(m) = title_map.get(title.as_ref()) {
                                 if m.filename.is_none() {
                                     let mut m = (*(*m)).clone();
-                                    m.filename.replace(path.to_string_lossy().to_string().into());
+                                    m.filename
+                                        .replace(path.to_string_lossy().to_string().into());
                                     m.update_db(&pool).await?;
                                 }
                             }
@@ -503,14 +505,17 @@ pub async fn run_google_music(
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
     let not_in_metadata: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
 
-    stdout.send(format!(
-        "all:{} tag:{} in_music_key:{} not_in_metadata:{} no_tag:{}",
-        all_files.len(),
-        has_tag.len(),
-        in_music_key.len(),
-        not_in_metadata.len(),
-        no_tag.len(),
-    ).into())?;
+    stdout.send(
+        format!(
+            "all:{} tag:{} in_music_key:{} not_in_metadata:{} no_tag:{}",
+            all_files.len(),
+            has_tag.len(),
+            in_music_key.len(),
+            not_in_metadata.len(),
+            no_tag.len(),
+        )
+        .into(),
+    )?;
 
     if let Some(fname) = filename {
         let mut f = File::create(fname)?;

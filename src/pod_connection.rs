@@ -5,8 +5,10 @@ use roxmltree::{Document, NodeType};
 use std::{collections::HashMap, path::Path};
 use tokio::{fs::File, io::AsyncWriteExt};
 
-use crate::{episode::Episode, exponential_retry::ExponentialRetry, podcast::Podcast};
-use crate::stack_string::StackString;
+use crate::{
+    episode::Episode, exponential_retry::ExponentialRetry, podcast::Podcast,
+    stack_string::StackString,
+};
 
 #[derive(Clone)]
 pub struct PodConnection {

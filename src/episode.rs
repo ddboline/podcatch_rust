@@ -23,9 +23,12 @@ pub struct Episode {
 
 impl Episode {
     pub fn url_basename(&self) -> Result<String, Error> {
-        if self.epurl.as_str().ends_with("media.mp3") || self.epurl.as_str().contains("https://feeds.acast.com") {
+        if self.epurl.as_str().ends_with("media.mp3")
+            || self.epurl.as_str().contains("https://feeds.acast.com")
+        {
             let basename: String = self
-                .title.as_str()
+                .title
+                .as_str()
                 .to_lowercase()
                 .chars()
                 .filter_map(|c| match c {
@@ -37,7 +40,8 @@ impl Episode {
             Ok(format!("{}.mp3", basename))
         } else if self.epurl.as_str().contains("newrustacean/") {
             let basename: Vec<_> = self
-                .epurl.as_str()
+                .epurl
+                .as_str()
                 .split("newrustacean/")
                 .last()
                 .ok_or_else(|| format_err!("..."))?

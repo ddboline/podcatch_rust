@@ -3,8 +3,7 @@ use postgres_query::FromSqlRow;
 use reqwest::Url;
 use std::collections::HashMap;
 
-use crate::{pgpool::PgPool, pod_connection::PodConnection};
-use crate::stack_string::StackString;
+use crate::{pgpool::PgPool, pod_connection::PodConnection, stack_string::StackString};
 
 #[derive(Default, Clone, Debug, FromSqlRow)]
 pub struct Podcast {

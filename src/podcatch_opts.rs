@@ -14,8 +14,8 @@ use crate::{
     pgpool::PgPool,
     pod_connection::PodConnection,
     podcast::Podcast,
-    stdout_channel::StdoutChannel,
     stack_string::StackString,
+    stdout_channel::StdoutChannel,
 };
 
 #[derive(StructOpt, Debug)]
@@ -86,9 +86,17 @@ impl PodcatchOpts {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
                         format!("{}/{}", home_dir, podcast_name).into()
                     });
-                    stdout.send(format!("Add {} {:?} {}", podcast_name, podcast_url, castid).into())?;
-                    Podcast::add_podcast(&pool, castid, podcast_name.as_str(), podcast_url, directory.as_str())
-                        .await?;
+                    stdout.send(
+                        format!("Add {} {:?} {}", podcast_name, podcast_url, castid).into(),
+                    )?;
+                    Podcast::add_podcast(
+                        &pool,
+                        castid,
+                        podcast_name.as_str(),
+                        podcast_url,
+                        directory.as_str(),
+                    )
+                    .await?;
                 }
             }
         } else {
@@ -145,14 +153,17 @@ async fn process_all_podcasts(
             .filter(|e| e.status != EpisodeStatus::Ready && e.status != EpisodeStatus::Downloaded)
             .collect();
 
-        stdout.send(format!(
-            "podcast {} {} {} {} {}",
-            pod.castname,
-            max_epid,
-            episode_map.len(),
-            new_episodes.len(),
-            update_episodes.len(),
-        ).into())?;
+        stdout.send(
+            format!(
+                "podcast {} {} {} {} {}",
+                pod.castname,
+                max_epid,
+                episode_map.len(),
+                new_episodes.len(),
+                update_episodes.len(),
+            )
+            .into(),
+        )?;
 
         let futures: Vec<_> = new_episodes
             .into_iter()
@@ -178,7 +189,10 @@ async fn process_all_podcasts(
                             let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
                             if new_epi.epguid.is_some() {
                                 new_epi.insert_episode(&pool).await?;
-                                if directory.as_str().contains(config.google_music_directory.as_str()) {
+                                if directory
+                                    .as_str()
+                                    .contains(config.google_music_directory.as_str())
+                                {
                                     let outfile =
                                         format!("{}/{}", directory, new_epi.url_basename()?);
                                     let path = Path::new(&outfile);
