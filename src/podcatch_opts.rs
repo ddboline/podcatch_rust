@@ -43,7 +43,7 @@ impl PodcatchOpts {
         let opts = Self::from_args();
 
         let config = Config::init_config()?;
-        let pool = PgPool::new(config.database_url.as_str());
+        let pool = PgPool::new(&config.database_url);
         let stdout = StdoutChannel::new();
         let task = stdout.spawn_stdout_task();
 
@@ -92,9 +92,9 @@ impl PodcatchOpts {
                     Podcast::add_podcast(
                         &pool,
                         castid,
-                        podcast_name.as_str(),
+                        &podcast_name,
                         podcast_url,
-                        directory.as_str(),
+                        &directory,
                     )
                     .await?;
                 }
@@ -180,7 +180,7 @@ async fn process_all_podcasts(
                             epi.url_basename()?
                         )];
                         if let Some(mut new_epi) =
-                            Episode::from_epurl(&pool, pod.castid, epi.epurl.as_str()).await?
+                            Episode::from_epurl(&pool, pod.castid, &epi.epurl).await?
                         {
                             output.push(format!("new title {}", epi.title));
                             new_epi.title = epi.title.clone();
@@ -190,7 +190,6 @@ async fn process_all_podcasts(
                             if new_epi.epguid.is_some() {
                                 new_epi.insert_episode(&pool).await?;
                                 if directory
-                                    .as_str()
                                     .contains(config.google_music_directory.as_str())
                                 {
                                     let outfile =
@@ -201,7 +200,7 @@ async fn process_all_podcasts(
                                             .map_err(|e| format_err!("{:?}", e))?;
                                         output.push(format!("ids {:?}", l));
                                     }
-                                } else if directory.as_str().contains("The_Bugle") {
+                                } else if directory.contains("The_Bugle") {
                                 }
                             } else {
                                 output.push(format!("No md5sum? {:?}", new_epi));
@@ -243,7 +242,7 @@ async fn process_all_podcasts(
                                     p.epguid = Some(md5sum.into());
                                     p.update_episode(&pool).await?;
                                 }
-                            } else if let Ok(url_) = epi.epurl.as_str().parse::<Url>() {
+                            } else if let Ok(url_) = epi.epurl.parse::<Url>() {
                                 output.push(format!("download {:?} {}", url_, fname));
                                 let new_epi =
                                     epi.download_episode(&pod_conn, directory_path).await?;

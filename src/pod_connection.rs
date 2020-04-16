@@ -55,7 +55,7 @@ impl PodConnection {
                     if title_ == "Wedgie diplomacy: Bugle 4083" {
                         return None;
                     }
-                    if epi.title.as_str() != title_ {
+                    if &epi.title != title_ {
                         let mut p = epi.clone();
                         p.title = title_.into();
                         return Some(p);
@@ -76,7 +76,7 @@ impl PodConnection {
         filter_urls: &HashMap<StackString, Episode>,
         mut latest_epid: i32,
     ) -> Result<Vec<Episode>, Error> {
-        let url = podcast.feedurl.as_str().parse()?;
+        let url = podcast.feedurl.parse()?;
         let text = self.get(&url).await?.text().await?;
         let doc = Document::parse(&text)?;
 
@@ -168,9 +168,9 @@ mod tests {
     #[ignore]
     async fn test_pod_connection_get() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(config.database_url.as_str());
+        let pool = PgPool::new(&config.database_url);
         let pod = Podcast::from_index(&pool, 1).await.unwrap().unwrap();
-        let url: Url = pod.feedurl.as_str().parse().unwrap();
+        let url: Url = pod.feedurl.parse().unwrap();
         let conn = PodConnection::new();
         let resp = conn.get(&url).await.unwrap();
         let text = resp.text().await.unwrap();
@@ -182,7 +182,7 @@ mod tests {
     #[ignore]
     async fn test_pod_connection_parse_feed() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(config.database_url.as_str());
+        let pool = PgPool::new(&config.database_url);
         let current_episodes = Episode::get_all_episodes(&pool, 1).await.unwrap();
         let max_epid = current_episodes
             .iter()

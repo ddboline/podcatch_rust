@@ -23,12 +23,11 @@ pub struct Episode {
 
 impl Episode {
     pub fn url_basename(&self) -> Result<String, Error> {
-        if self.epurl.as_str().ends_with("media.mp3")
-            || self.epurl.as_str().contains("https://feeds.acast.com")
+        if self.epurl.ends_with("media.mp3")
+            || self.epurl.contains("https://feeds.acast.com")
         {
             let basename: String = self
                 .title
-                .as_str()
                 .to_lowercase()
                 .chars()
                 .filter_map(|c| match c {
@@ -38,10 +37,9 @@ impl Episode {
                 })
                 .collect();
             Ok(format!("{}.mp3", basename))
-        } else if self.epurl.as_str().contains("newrustacean/") {
+        } else if self.epurl.contains("newrustacean/") {
             let basename: Vec<_> = self
                 .epurl
-                .as_str()
                 .split("newrustacean/")
                 .last()
                 .ok_or_else(|| format_err!("..."))?
@@ -50,7 +48,7 @@ impl Episode {
             let basename: String = basename.join("_");
             Ok(basename)
         } else {
-            let epurl: Url = self.epurl.as_str().parse()?;
+            let epurl: Url = self.epurl.parse()?;
             epurl
                 .path()
                 .split('/')
@@ -199,7 +197,7 @@ impl Episode {
                 "No such directory {}",
                 directory.to_string_lossy()
             ))
-        } else if let Ok(url) = self.epurl.as_str().parse() {
+        } else if let Ok(url) = self.epurl.parse() {
             let outfile = directory.join(self.url_basename()?);
             if outfile.exists() {
                 remove_file(&outfile).await?;
@@ -230,7 +228,7 @@ mod tests {
     #[ignore]
     async fn test_episodes_get_all_episodes() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(config.database_url.as_str());
+        let pool = PgPool::new(&config.database_url);
 
         let eps = Episode::get_all_episodes(&pool, 1).await.unwrap();
 

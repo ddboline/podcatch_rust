@@ -308,7 +308,7 @@ pub async fn run_google_music(
         .map(|mut m| {
             let pool = pool.clone();
             async move {
-                if let Some(m_) = GoogleMusicMetadata::by_id(m.id.as_str(), &pool).await? {
+                if let Some(m_) = GoogleMusicMetadata::by_id(&m.id, &pool).await? {
                     m.filename = m_.filename;
                 } else {
                     m.insert_into_db(&pool).await?;
@@ -336,7 +336,7 @@ pub async fn run_google_music(
             let t: StackString = t.into();
             let pool = pool.clone();
             async move {
-                let items = GoogleMusicMetadata::by_title(t.as_str(), &pool).await?;
+                let items = GoogleMusicMetadata::by_title(&t, &pool).await?;
                 Ok((t, items))
             }
         })

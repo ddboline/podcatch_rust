@@ -128,15 +128,15 @@ mod tests {
     #[ignore]
     async fn test_podcasts_from_index() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(config.database_url.as_str());
+        let pool = PgPool::new(&config.database_url);
         let p = Podcast::from_index(&pool, 19).await.unwrap().unwrap();
         debug!("{:?}", p);
         assert_eq!(
-            p.castname.as_str(),
+            &p.castname,
             "The Current Song of the Day - Minnesota Public Radio"
         );
         assert_eq!(
-            p.feedurl.as_str(),
+            &p.feedurl,
             "http://minnesota.publicradio.org/tools/podcasts/song-of-the-day.php"
         );
     }
@@ -145,13 +145,13 @@ mod tests {
     #[ignore]
     async fn test_podcasts_from_feedurl() {
         let config = Config::init_config().unwrap();
-        let pool = PgPool::new(config.database_url.as_str());
+        let pool = PgPool::new(&config.database_url);
         let p = Podcast::from_feedurl(&pool, "http://nightvale.libsyn.com/rss")
             .await
             .unwrap()
             .unwrap();
         debug!("{:?}", p);
         assert_eq!(p.castid, 24);
-        assert_eq!(p.castname.as_str(), "Welcome to Night Vale");
+        assert_eq!(&p.castname, "Welcome to Night Vale");
     }
 }
