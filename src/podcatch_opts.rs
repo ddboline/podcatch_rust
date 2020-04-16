@@ -89,14 +89,8 @@ impl PodcatchOpts {
                     stdout.send(
                         format!("Add {} {:?} {}", podcast_name, podcast_url, castid).into(),
                     )?;
-                    Podcast::add_podcast(
-                        &pool,
-                        castid,
-                        &podcast_name,
-                        podcast_url,
-                        &directory,
-                    )
-                    .await?;
+                    Podcast::add_podcast(&pool, castid, &podcast_name, podcast_url, &directory)
+                        .await?;
                 }
             }
         } else {
@@ -189,9 +183,7 @@ async fn process_all_podcasts(
                             let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
                             if new_epi.epguid.is_some() {
                                 new_epi.insert_episode(&pool).await?;
-                                if directory
-                                    .contains(config.google_music_directory.as_str())
-                                {
+                                if directory.contains(config.google_music_directory.as_str()) {
                                     let outfile =
                                         format!("{}/{}", directory, new_epi.url_basename()?);
                                     let path = Path::new(&outfile);

@@ -23,9 +23,7 @@ pub struct Episode {
 
 impl Episode {
     pub fn url_basename(&self) -> Result<String, Error> {
-        if self.epurl.ends_with("media.mp3")
-            || self.epurl.contains("https://feeds.acast.com")
-        {
+        if self.epurl.ends_with("media.mp3") || self.epurl.contains("https://feeds.acast.com") {
             let basename: String = self
                 .title
                 .to_lowercase()

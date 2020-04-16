@@ -55,7 +55,7 @@ impl PodConnection {
                     if title_ == "Wedgie diplomacy: Bugle 4083" {
                         return None;
                     }
-                    if &epi.title != title_ {
+                    if epi.title != title_ {
                         let mut p = epi.clone();
                         p.title = title_.into();
                         return Some(p);
