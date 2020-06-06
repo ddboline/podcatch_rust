@@ -21,6 +21,7 @@ pub struct Episode {
     pub epguid: Option<StackString>,
 }
 
+#[allow(clippy::similar_names)]
 impl Episode {
     pub fn url_basename(&self) -> Result<String, Error> {
         if self.epurl.ends_with("media.mp3") || self.epurl.contains("https://feeds.acast.com") {

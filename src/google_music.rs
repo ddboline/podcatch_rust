@@ -64,6 +64,7 @@ macro_rules! get_pydict_item {
     };
 }
 
+#[allow(clippy::similar_names)]
 impl GoogleMusicMetadata {
     pub async fn insert_into_db(&self, pool: &PgPool) -> Result<(), Error> {
         let query = postgres_query::query!(
