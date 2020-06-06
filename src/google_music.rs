@@ -5,6 +5,7 @@ use cpython::{
 };
 use futures::future::try_join_all;
 use id3::Tag;
+use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use serde::Deserialize;
@@ -287,6 +288,13 @@ pub async fn run_google_music(
                 })
                 .collect();
             let flist = flist?;
+            stdout.send(
+                format!(
+                    "upload files: {}",
+                    flist.iter().map(|f| format!("{:?}", f)).join("\n")
+                )
+                .into(),
+            )?;
             let config = config.clone();
             let stdout = stdout.clone();
             return spawn_blocking(move || {
@@ -504,6 +512,16 @@ pub async fn run_google_music(
         .collect();
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
     let not_in_metadata: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
+    stdout.send(
+        format!(
+            "not_in_metadata\n{}",
+            not_in_metadata
+                .iter()
+                .map(|f| format!("{:?}", f))
+                .join("\n")
+        )
+        .into(),
+    )?;
 
     stdout.send(
         format!(
