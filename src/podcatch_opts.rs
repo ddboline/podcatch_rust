@@ -1,7 +1,7 @@
 use anyhow::{format_err, Error};
 use futures::future::try_join_all;
 use reqwest::Url;
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{collections::HashSet, path::Path, sync::Arc};
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
 
@@ -119,10 +119,7 @@ async fn process_all_podcasts(
                 let episodes = Episode::get_all_episodes(&pool, pod.castid).await?;
                 let max_epid = Episode::get_max_epid(&pool).await?;
 
-                let episode_map: Result<HashMap<StackString, Episode>, Error> = episodes
-                    .into_iter()
-                    .map(|e| Ok((e.title.clone(), e)))
-                    .collect();
+                let episode_map: Result<HashSet<Episode>, Error> = episodes.into_iter().map(|e| Ok(e)).collect();
 
                 let episode_map = episode_map?;
 

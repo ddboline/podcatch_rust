@@ -207,6 +207,7 @@ impl GoogleMusicMetadata {
     }
 
     pub fn get_uploaded_mp3(config: &Config) -> Result<Vec<Self>, Error> {
+        debug!("Get uploaded mp3's");
         _get_uploaded_mp3(config).map_err(|e| format_err!("{:?}", e))
     }
 }
@@ -236,6 +237,7 @@ fn _get_uploaded_mp3(config: &Config) -> PyResult<Vec<GoogleMusicMetadata>> {
         let result = GoogleMusicMetadata::from_pydict(py, &dict)?;
         results.push(result);
     }
+    debug!("Got {} mp3's", results.len());
     Ok(results)
 }
 

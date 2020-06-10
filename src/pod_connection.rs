@@ -2,7 +2,7 @@ use anyhow::{format_err, Error};
 use futures::StreamExt;
 use reqwest::{Client, Url};
 use roxmltree::{Document, NodeType};
-use std::{collections::HashMap, path::Path};
+use std::{collections::{HashSet}, path::Path};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::{
@@ -33,7 +33,7 @@ impl PodConnection {
         title: Option<&str>,
         epurl: Option<&str>,
         enctype: Option<&str>,
-        filter_urls: &HashMap<StackString, Episode>,
+        filter_urls: &HashSet<Episode>,
         latest_epid: i32,
     ) -> Option<Episode> {
         if let Some(epurl) = epurl.as_ref() {
@@ -46,11 +46,11 @@ impl PodConnection {
                 ..Episode::default()
             };
 
-            let url_exists = filter_urls.contains_key(&ep.title);
+            let url_exists = filter_urls.contains(ep.title.as_str());
 
             if !url_exists {
                 return Some(ep);
-            } else if let Some(epi) = filter_urls.get(&ep.title) {
+            } else if let Some(epi) = filter_urls.get(ep.title.as_str()) {
                 if let Some(title_) = title {
                     if title_ == "Wedgie diplomacy: Bugle 4083" {
                         return None;
@@ -73,7 +73,7 @@ impl PodConnection {
     pub async fn parse_feed(
         &self,
         podcast: &Podcast,
-        filter_urls: &HashMap<StackString, Episode>,
+        filter_urls: &HashSet<Episode>,
         mut latest_epid: i32,
     ) -> Result<Vec<Episode>, Error> {
         let url = podcast.feedurl.parse()?;
@@ -157,11 +157,11 @@ impl ExponentialRetry for PodConnection {
 #[cfg(test)]
 mod tests {
     use reqwest::Url;
-    use std::{collections::HashMap, fs::remove_file, path::Path};
+    use std::{collections::HashSet, fs::remove_file, path::Path};
 
     use crate::{
         config::Config, episode::Episode, exponential_retry::ExponentialRetry, pgpool::PgPool,
-        pod_connection::PodConnection, podcast::Podcast, stack_string::StackString,
+        pod_connection::PodConnection, podcast::Podcast,
     };
 
     #[tokio::test]
@@ -189,14 +189,8 @@ mod tests {
             .map(|e| e.episodeid)
             .max()
             .unwrap_or(0);
-        let current_urls: HashMap<StackString, Episode> = current_episodes
-            .into_iter()
-            .map(|e| {
-                let basename = e.url_basename().unwrap();
-
-                (basename.into(), e)
-            })
-            .collect();
+        let current_urls: HashSet<Episode> = current_episodes
+            .into_iter().collect();
 
         let pod = Podcast::from_index(&pool, 23).await.unwrap().unwrap();
         let conn = PodConnection::new();

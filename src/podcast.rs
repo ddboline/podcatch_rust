@@ -1,7 +1,7 @@
 use anyhow::Error;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::{pgpool::PgPool, pod_connection::PodConnection, stack_string::StackString};
 
@@ -33,7 +33,7 @@ impl Podcast {
                 directory: Some(dir.into()),
             };
             let episodes = PodConnection::new()
-                .parse_feed(&pod, &HashMap::new(), 0)
+                .parse_feed(&pod, &HashSet::new(), 0)
                 .await?;
             assert!(!episodes.is_empty());
             let query = postgres_query::query!(

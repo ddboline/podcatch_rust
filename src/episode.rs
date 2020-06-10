@@ -4,13 +4,15 @@ use postgres_query::FromSqlRow;
 use reqwest::Url;
 use std::path::Path;
 use tokio::fs::remove_file;
+use std::hash::{Hash, Hasher};
+use std::borrow::Borrow;
 
 use crate::{
     episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool, pod_connection::PodConnection,
     stack_string::StackString,
 };
 
-#[derive(Default, Clone, Debug, FromSqlRow)]
+#[derive(Default, Clone, Debug, FromSqlRow, Eq)]
 pub struct Episode {
     pub castid: i32,
     pub episodeid: i32,
@@ -19,6 +21,25 @@ pub struct Episode {
     pub enctype: StackString,
     pub status: EpisodeStatus,
     pub epguid: Option<StackString>,
+}
+
+impl PartialEq for Episode {
+    fn eq(&self, other: &Self) -> bool {
+        self.title == other.title
+    }
+}
+
+impl Hash for Episode {
+    fn hash<H>(&self, state: &mut H)
+    where H: Hasher, {
+        self.title.hash(state)
+    }
+}
+
+impl Borrow<str> for Episode {
+    fn borrow(&self) -> &str {
+        self.title.as_str()
+    }
 }
 
 #[allow(clippy::similar_names)]
