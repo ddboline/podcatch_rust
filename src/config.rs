@@ -1,9 +1,10 @@
 use anyhow::{format_err, Error};
-use std::{env::var, ops::Deref, path::Path, sync::Arc};
+use std::{ops::Deref, path::Path, sync::Arc};
+use serde::Deserialize;
 
 use crate::stack_string::StackString;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Deserialize)]
 pub struct ConfigInner {
     pub database_url: StackString,
     pub google_music_directory: StackString,
@@ -13,27 +14,13 @@ pub struct ConfigInner {
 #[derive(Default, Debug, Clone)]
 pub struct Config(Arc<ConfigInner>);
 
-macro_rules! set_config {
-    ($s:ident, $id:ident) => {
-        if let Ok($id) = var(&stringify!($id).to_uppercase()) {
-            $s.$id = $id.into();
-        }
-    };
-}
-
 impl ConfigInner {
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn from_env() -> Self {
-        let mut conf = Self::default();
-
-        set_config!(conf, database_url);
-        set_config!(conf, google_music_directory);
-        set_config!(conf, user);
-
-        conf
+        envy::from_env().unwrap_or_else(|_| Self::default())
     }
 }
 
