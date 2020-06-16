@@ -2,7 +2,7 @@ use anyhow::{format_err, Error};
 use futures::StreamExt;
 use reqwest::{Client, Url};
 use roxmltree::{Document, NodeType};
-use std::{collections::{HashSet}, path::Path};
+use std::{collections::HashSet, path::Path};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::{
@@ -189,8 +189,7 @@ mod tests {
             .map(|e| e.episodeid)
             .max()
             .unwrap_or(0);
-        let current_urls: HashSet<Episode> = current_episodes
-            .into_iter().collect();
+        let current_urls: HashSet<Episode> = current_episodes.into_iter().collect();
 
         let pod = Podcast::from_index(&pool, 23).await.unwrap().unwrap();
         let conn = PodConnection::new();

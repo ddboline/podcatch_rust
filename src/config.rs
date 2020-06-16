@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
-use std::{ops::Deref, path::Path, sync::Arc};
 use serde::Deserialize;
+use std::{ops::Deref, path::Path, sync::Arc};
 
 use crate::stack_string::StackString;
 

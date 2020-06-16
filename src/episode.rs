@@ -2,10 +2,12 @@ use anyhow::{format_err, Error};
 use log::debug;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
-use std::path::Path;
+use std::{
+    borrow::Borrow,
+    hash::{Hash, Hasher},
+    path::Path,
+};
 use tokio::fs::remove_file;
-use std::hash::{Hash, Hasher};
-use std::borrow::Borrow;
 
 use crate::{
     episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool, pod_connection::PodConnection,
@@ -31,7 +33,9 @@ impl PartialEq for Episode {
 
 impl Hash for Episode {
     fn hash<H>(&self, state: &mut H)
-    where H: Hasher, {
+    where
+        H: Hasher,
+    {
         self.title.hash(state)
     }
 }

@@ -119,7 +119,8 @@ async fn process_all_podcasts(
                 let episodes = Episode::get_all_episodes(&pool, pod.castid).await?;
                 let max_epid = Episode::get_max_epid(&pool).await?;
 
-                let episode_map: Result<HashSet<Episode>, Error> = episodes.into_iter().map(|e| Ok(e)).collect();
+                let episode_map: Result<HashSet<Episode>, Error> =
+                    episodes.into_iter().map(|e| Ok(e)).collect();
 
                 let episode_map = episode_map?;
 
