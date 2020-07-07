@@ -48,7 +48,7 @@ impl Borrow<str> for Episode {
 
 #[allow(clippy::similar_names)]
 impl Episode {
-    pub fn url_basename(&self) -> Result<String, Error> {
+    pub fn url_basename(&self) -> Result<StackString, Error> {
         if self.epurl.ends_with("media.mp3") || self.epurl.contains("https://feeds.acast.com") {
             let basename: String = self
                 .title
@@ -60,7 +60,7 @@ impl Episode {
                     _ => None,
                 })
                 .collect();
-            Ok(format!("{}.mp3", basename))
+            Ok(format!("{}.mp3", basename).into())
         } else if self.epurl.contains("newrustacean/") {
             let basename: Vec<_> = self
                 .epurl
@@ -69,15 +69,14 @@ impl Episode {
                 .ok_or_else(|| format_err!("..."))?
                 .split('/')
                 .collect();
-            let basename: String = basename.join("_");
-            Ok(basename)
+            Ok(basename.join("_").into())
         } else {
             let epurl: Url = self.epurl.parse()?;
             epurl
                 .path()
                 .split('/')
                 .last()
-                .map(ToString::to_string)
+                .map(Into::into)
                 .ok_or_else(|| format_err!("No basename"))
         }
     }
@@ -222,7 +221,7 @@ impl Episode {
                 directory.to_string_lossy()
             ))
         } else if let Ok(url) = self.epurl.parse() {
-            let outfile = directory.join(self.url_basename()?);
+            let outfile = directory.join(self.url_basename()?.as_str());
             if outfile.exists() {
                 remove_file(&outfile).await?;
             }

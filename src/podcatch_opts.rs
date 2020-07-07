@@ -223,7 +223,7 @@ async fn process_all_podcasts(
                     if let Some(directory) = pod.directory.as_ref() {
                         let directory_path = Path::new(directory.as_str());
                         if epguid.len() != 32 {
-                            let path = directory_path.join(url);
+                            let path = directory_path.join(url.as_str());
                             let fname = path.to_string_lossy();
                             if path.exists() {
                                 if let Ok(md5sum) = get_md5sum(&path) {
