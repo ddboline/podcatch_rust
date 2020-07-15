@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -37,7 +37,7 @@ derive_more = "0.99"
 smartstring = "0.2"
 itertools = "0.9"
 envy = "0.4"
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", branch="master", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.1", features=["postgres_types"] }
 
 [[bin]]
 name = "podcatch-rust"
