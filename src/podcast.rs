@@ -1,9 +1,10 @@
 use anyhow::Error;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
+use stack_string::StackString;
 use std::collections::HashSet;
 
-use crate::{pgpool::PgPool, pod_connection::PodConnection, stack_string::StackString};
+use crate::{pgpool::PgPool, pod_connection::PodConnection};
 
 #[derive(Default, Clone, Debug, FromSqlRow)]
 pub struct Podcast {

@@ -2,13 +2,11 @@ use anyhow::{format_err, Error};
 use futures::StreamExt;
 use reqwest::{Client, Url};
 use roxmltree::{Document, NodeType};
+use stack_string::StackString;
 use std::{collections::HashSet, path::Path};
 use tokio::{fs::File, io::AsyncWriteExt};
 
-use crate::{
-    episode::Episode, exponential_retry::ExponentialRetry, podcast::Podcast,
-    stack_string::StackString,
-};
+use crate::{episode::Episode, exponential_retry::ExponentialRetry, podcast::Podcast};
 
 #[derive(Clone)]
 pub struct PodConnection {

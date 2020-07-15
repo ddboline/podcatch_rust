@@ -2,7 +2,7 @@ use anyhow::{format_err, Error};
 use serde::Deserialize;
 use std::{ops::Deref, path::Path, sync::Arc};
 
-use crate::stack_string::StackString;
+use stack_string::StackString;
 
 #[derive(Default, Debug, Deserialize)]
 pub struct ConfigInner {

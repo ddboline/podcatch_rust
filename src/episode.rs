@@ -2,6 +2,7 @@ use anyhow::{format_err, Error};
 use log::debug;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
+use stack_string::StackString;
 use std::{
     borrow::Borrow,
     hash::{Hash, Hasher},
@@ -11,7 +12,6 @@ use tokio::fs::remove_file;
 
 use crate::{
     episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool, pod_connection::PodConnection,
-    stack_string::StackString,
 };
 
 #[derive(Default, Clone, Debug, FromSqlRow, Eq)]

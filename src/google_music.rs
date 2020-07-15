@@ -9,6 +9,7 @@ use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use serde::Deserialize;
+use stack_string::StackString;
 use std::{
     collections::HashMap,
     ffi::OsStr,
@@ -21,9 +22,7 @@ use std::{
 use tokio::task::spawn_blocking;
 use walkdir::WalkDir;
 
-use crate::{
-    config::Config, pgpool::PgPool, stack_string::StackString, stdout_channel::StdoutChannel,
-};
+use crate::{config::Config, pgpool::PgPool, stdout_channel::StdoutChannel};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct MusicKey {

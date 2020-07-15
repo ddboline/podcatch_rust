@@ -1,6 +1,7 @@
 use anyhow::{format_err, Error};
 use futures::future::try_join_all;
 use reqwest::Url;
+use stack_string::StackString;
 use std::{collections::HashSet, path::Path, sync::Arc};
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
@@ -14,7 +15,6 @@ use crate::{
     pgpool::PgPool,
     pod_connection::PodConnection,
     podcast::Podcast,
-    stack_string::StackString,
     stdout_channel::StdoutChannel,
 };
 
