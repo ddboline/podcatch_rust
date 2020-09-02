@@ -250,8 +250,7 @@ pub fn upload_list_of_mp3s(config: &Config, filelist: &[PathBuf]) -> PyResult<Ve
         PyTuple::new(py, &[config.user.as_str().to_py_object(py).into_object()]),
         None,
     )?;
-    let mut results = Vec::new();
-    for p in filelist {
+    filelist.into_iter().map(|p| {
         let s = p.to_string_lossy();
         debug!("upload {}", s);
         let fname = PyString::new(py, &s);
@@ -266,9 +265,8 @@ pub fn upload_list_of_mp3s(config: &Config, filelist: &[PathBuf]) -> PyResult<Ve
             }
             None => None,
         };
-        results.push(id);
-    }
-    Ok(results)
+        Ok(id)
+    }).collect()
 }
 
 pub async fn run_google_music(
