@@ -4,14 +4,12 @@ use reqwest::Url;
 use stack_string::StackString;
 use std::{collections::HashSet, path::Path, sync::Arc};
 use structopt::StructOpt;
-use tokio::task::spawn_blocking;
 
 use crate::{
     config::Config,
     episode::Episode,
     episode_status::EpisodeStatus,
     get_md5sum,
-    google_music::{run_google_music, upload_list_of_mp3s, GoogleMusicMetadata},
     pgpool::PgPool,
     pod_connection::PodConnection,
     podcast::Podcast,
@@ -32,8 +30,6 @@ pub struct PodcatchOpts {
     castid: Option<i32>,
     #[structopt(short = "d", long = "directory")]
     directory: Option<StackString>,
-    #[structopt(short = "g", long = "google-music")]
-    do_google_music: bool,
     #[structopt(short = "f", long = "filename")]
     filename: Option<StackString>,
 }
@@ -47,25 +43,7 @@ impl PodcatchOpts {
         let stdout = StdoutChannel::new();
         let task = stdout.spawn_stdout_task();
 
-        if opts.do_google_music {
-            let metadata = {
-                let config = config.clone();
-                spawn_blocking(move || GoogleMusicMetadata::get_uploaded_mp3(&config))
-            };
-
-            process_all_podcasts(&pool, &config, &stdout).await?;
-
-            let metadata = metadata.await.expect("get_uploaded_mp3 paniced")?;
-            run_google_music(
-                &config,
-                metadata,
-                opts.filename.as_ref().map(StackString::as_str),
-                opts.do_add,
-                &pool,
-                &stdout,
-            )
-            .await?;
-        } else if opts.do_list {
+        if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid).await? {
                     stdout.send(format!("{:?}", eps).into())?;
@@ -94,7 +72,7 @@ impl PodcatchOpts {
                 }
             }
         } else {
-            process_all_podcasts(&pool, &config, &stdout).await?;
+            process_all_podcasts(&pool, &stdout).await?;
         }
         stdout.close().await?;
         task.await?
@@ -103,7 +81,6 @@ impl PodcatchOpts {
 
 async fn process_all_podcasts(
     pool: &PgPool,
-    config: &Config,
     stdout: &StdoutChannel,
 ) -> Result<(), Error> {
     let pod_conn = PodConnection::new();
@@ -181,17 +158,6 @@ async fn process_all_podcasts(
                             let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
                             if new_epi.epguid.is_some() {
                                 new_epi.insert_episode(&pool).await?;
-                                if directory.contains(config.google_music_directory.as_str()) {
-                                    let outfile =
-                                        format!("{}/{}", directory, new_epi.url_basename()?);
-                                    let path = Path::new(&outfile);
-                                    if path.exists() {
-                                        let l = upload_list_of_mp3s(config, &[path.to_path_buf()])
-                                            .map_err(|e| format_err!("{:?}", e))?;
-                                        output.push(format!("ids {:?}", l));
-                                    }
-                                } else if directory.contains("The_Bugle") {
-                                }
                             } else {
                                 output.push(format!("No md5sum? {:?}", new_epi));
                             }
