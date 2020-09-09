@@ -6,14 +6,8 @@ use std::{collections::HashSet, path::Path, sync::Arc};
 use structopt::StructOpt;
 
 use crate::{
-    config::Config,
-    episode::Episode,
-    episode_status::EpisodeStatus,
-    get_md5sum,
-    pgpool::PgPool,
-    pod_connection::PodConnection,
-    podcast::Podcast,
-    stdout_channel::StdoutChannel,
+    config::Config, episode::Episode, episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool,
+    pod_connection::PodConnection, podcast::Podcast, stdout_channel::StdoutChannel,
 };
 
 #[derive(StructOpt, Debug)]
@@ -63,9 +57,7 @@ impl PodcatchOpts {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
                         format!("{}/{}", home_dir, podcast_name).into()
                     });
-                    stdout.send(
-                        format!("Add {} {:?} {}", podcast_name, podcast_url, castid)
-                    );
+                    stdout.send(format!("Add {} {:?} {}", podcast_name, podcast_url, castid));
                     Podcast::add_podcast(&pool, castid, &podcast_name, podcast_url, &directory)
                         .await?;
                 }
@@ -77,10 +69,7 @@ impl PodcatchOpts {
     }
 }
 
-async fn process_all_podcasts(
-    pool: &PgPool,
-    stdout: &StdoutChannel,
-) -> Result<(), Error> {
+async fn process_all_podcasts(pool: &PgPool, stdout: &StdoutChannel) -> Result<(), Error> {
     let pod_conn = PodConnection::new();
 
     let futures: Vec<_> = Podcast::get_all_podcasts(&pool)
@@ -120,16 +109,14 @@ async fn process_all_podcasts(
             .filter(|e| e.status != EpisodeStatus::Ready && e.status != EpisodeStatus::Downloaded)
             .collect();
 
-        stdout.send(
-            format!(
-                "podcast {} {} {} {} {}",
-                pod.castname,
-                max_epid,
-                episode_map.len(),
-                new_episodes.len(),
-                update_episodes.len(),
-            )
-        );
+        stdout.send(format!(
+            "podcast {} {} {} {} {}",
+            pod.castname,
+            max_epid,
+            episode_map.len(),
+            new_episodes.len(),
+            update_episodes.len(),
+        ));
 
         let futures: Vec<_> = new_episodes
             .into_iter()
