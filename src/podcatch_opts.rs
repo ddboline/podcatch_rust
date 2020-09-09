@@ -41,16 +41,15 @@ impl PodcatchOpts {
         let config = Config::init_config()?;
         let pool = PgPool::new(&config.database_url);
         let stdout = StdoutChannel::new();
-        let task = stdout.spawn_stdout_task();
 
         if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid).await? {
-                    stdout.send(format!("{:?}", eps).into())?;
+                    stdout.send(format!("{:?}", eps));
                 }
             } else {
                 for pod in &Podcast::get_all_podcasts(&pool).await? {
-                    stdout.send(format!("{:?}", pod).into())?;
+                    stdout.send(format!("{:?}", pod));
                 }
             }
         } else if opts.do_add {
@@ -65,8 +64,8 @@ impl PodcatchOpts {
                         format!("{}/{}", home_dir, podcast_name).into()
                     });
                     stdout.send(
-                        format!("Add {} {:?} {}", podcast_name, podcast_url, castid).into(),
-                    )?;
+                        format!("Add {} {:?} {}", podcast_name, podcast_url, castid)
+                    );
                     Podcast::add_podcast(&pool, castid, &podcast_name, podcast_url, &directory)
                         .await?;
                 }
@@ -74,8 +73,7 @@ impl PodcatchOpts {
         } else {
             process_all_podcasts(&pool, &stdout).await?;
         }
-        stdout.close().await?;
-        task.await?
+        stdout.close().await
     }
 }
 
@@ -131,8 +129,7 @@ async fn process_all_podcasts(
                 new_episodes.len(),
                 update_episodes.len(),
             )
-            .into(),
-        )?;
+        );
 
         let futures: Vec<_> = new_episodes
             .into_iter()
@@ -171,7 +168,7 @@ async fn process_all_podcasts(
             .collect();
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         for line in results?.into_iter().filter_map(|x| x) {
-            stdout.send(line.join("\n").into())?;
+            stdout.send(line.join("\n"));
         }
 
         let futures: Vec<_> = update_episodes
@@ -212,7 +209,7 @@ async fn process_all_podcasts(
             .collect();
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         for line in results? {
-            stdout.send(line.join("\n").into())?;
+            stdout.send(line.join("\n"));
         }
     }
     Ok(())
