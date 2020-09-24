@@ -72,7 +72,7 @@ impl PodcatchOpts {
 async fn process_all_podcasts(pool: &PgPool, stdout: &StdoutChannel) -> Result<(), Error> {
     let pod_conn = PodConnection::new();
 
-    let futures: Vec<_> = Podcast::get_all_podcasts(&pool)
+    let futures = Podcast::get_all_podcasts(&pool)
         .await?
         .into_iter()
         .map(|pod| {
@@ -95,8 +95,7 @@ async fn process_all_podcasts(pool: &PgPool, stdout: &StdoutChannel) -> Result<(
 
                 Ok((pod, episode_list, max_epid, episode_map))
             }
-        })
-        .collect();
+        });
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
 
     for (pod, episode_list, max_epid, episode_map) in results? {
@@ -118,82 +117,75 @@ async fn process_all_podcasts(pool: &PgPool, stdout: &StdoutChannel) -> Result<(
             update_episodes.len(),
         ));
 
-        let futures: Vec<_> = new_episodes
-            .into_iter()
-            .map(|epi| {
-                let pod = pod.clone();
-                let pod_conn = pod_conn.clone();
-                async move {
-                    if let Some(directory) = pod.directory.as_ref() {
-                        let directory_path = Path::new(directory.as_str());
-                        let mut output = vec![format!(
-                            "new download {} {} {}",
-                            epi.epurl,
-                            directory,
-                            epi.url_basename()?
-                        )];
-                        if let Some(mut new_epi) =
-                            Episode::from_epurl(&pool, pod.castid, &epi.epurl).await?
-                        {
-                            output.push(format!("new title {}", epi.title));
-                            new_epi.title = epi.title.clone();
-                            new_epi.update_episode(&pool).await?;
-                        } else {
-                            let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
-                            if new_epi.epguid.is_some() {
-                                new_epi.insert_episode(&pool).await?;
-                            } else {
-                                output.push(format!("No md5sum? {:?}", new_epi));
-                            }
-                        }
-                        Ok(Some(output))
+        let futures = new_episodes.into_iter().map(|epi| {
+            let pod = pod.clone();
+            let pod_conn = pod_conn.clone();
+            async move {
+                if let Some(directory) = pod.directory.as_ref() {
+                    let directory_path = Path::new(directory.as_str());
+                    let mut output = vec![format!(
+                        "new download {} {} {}",
+                        epi.epurl,
+                        directory,
+                        epi.url_basename()?
+                    )];
+                    if let Some(mut new_epi) =
+                        Episode::from_epurl(&pool, pod.castid, &epi.epurl).await?
+                    {
+                        output.push(format!("new title {}", epi.title));
+                        new_epi.title = epi.title.clone();
+                        new_epi.update_episode(&pool).await?;
                     } else {
-                        Ok(None)
+                        let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
+                        if new_epi.epguid.is_some() {
+                            new_epi.insert_episode(&pool).await?;
+                        } else {
+                            output.push(format!("No md5sum? {:?}", new_epi));
+                        }
                     }
+                    Ok(Some(output))
+                } else {
+                    Ok(None)
                 }
-            })
-            .collect();
+            }
+        });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         for line in results?.into_iter().filter_map(|x| x) {
             stdout.send(line.join("\n"));
         }
 
-        let futures: Vec<_> = update_episodes
-            .into_iter()
-            .map(|epi| {
-                let pod = pod.clone();
-                let pod_conn = pod_conn.clone();
-                async move {
-                    let mut output = Vec::new();
-                    let url = epi.url_basename()?;
-                    let epguid = epi
-                        .epguid
-                        .as_ref()
-                        .ok_or_else(|| format_err!("no md5sum"))?;
-                    if let Some(directory) = pod.directory.as_ref() {
-                        let directory_path = Path::new(directory.as_str());
-                        if epguid.len() != 32 {
-                            let path = directory_path.join(url.as_str());
-                            let fname = path.to_string_lossy();
-                            if path.exists() {
-                                if let Ok(md5sum) = get_md5sum(&path) {
-                                    let mut p = epi.clone();
-                                    output.push(format!("update md5sum {} {}", fname, md5sum));
-                                    p.epguid = Some(md5sum.into());
-                                    p.update_episode(&pool).await?;
-                                }
-                            } else if let Ok(url_) = epi.epurl.parse::<Url>() {
-                                output.push(format!("download {:?} {}", url_, fname));
-                                let new_epi =
-                                    epi.download_episode(&pod_conn, directory_path).await?;
-                                new_epi.update_episode(&pool).await?;
+        let futures = update_episodes.into_iter().map(|epi| {
+            let pod = pod.clone();
+            let pod_conn = pod_conn.clone();
+            async move {
+                let mut output = Vec::new();
+                let url = epi.url_basename()?;
+                let epguid = epi
+                    .epguid
+                    .as_ref()
+                    .ok_or_else(|| format_err!("no md5sum"))?;
+                if let Some(directory) = pod.directory.as_ref() {
+                    let directory_path = Path::new(directory.as_str());
+                    if epguid.len() != 32 {
+                        let path = directory_path.join(url.as_str());
+                        let fname = path.to_string_lossy();
+                        if path.exists() {
+                            if let Ok(md5sum) = get_md5sum(&path) {
+                                let mut p = epi.clone();
+                                output.push(format!("update md5sum {} {}", fname, md5sum));
+                                p.epguid = Some(md5sum.into());
+                                p.update_episode(&pool).await?;
                             }
+                        } else if let Ok(url_) = epi.epurl.parse::<Url>() {
+                            output.push(format!("download {:?} {}", url_, fname));
+                            let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
+                            new_epi.update_episode(&pool).await?;
                         }
                     }
-                    Ok(output)
                 }
-            })
-            .collect();
+                Ok(output)
+            }
+        });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
         for line in results? {
             stdout.send(line.join("\n"));

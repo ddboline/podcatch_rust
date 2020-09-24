@@ -1,4 +1,5 @@
 use anyhow::{format_err, Error};
+use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
@@ -62,14 +63,15 @@ impl Episode {
                 .collect();
             Ok(format!("{}.mp3", basename).into())
         } else if self.epurl.contains("newrustacean/") {
-            let basename: Vec<_> = self
+            let basename = self
                 .epurl
                 .split("newrustacean/")
                 .last()
                 .ok_or_else(|| format_err!("..."))?
                 .split('/')
-                .collect();
-            Ok(basename.join("_").into())
+                .join("_")
+                .into();
+            Ok(basename)
         } else {
             let epurl: Url = self.epurl.parse()?;
             epurl
