@@ -47,21 +47,25 @@ impl Borrow<str> for Episode {
     }
 }
 
+fn basename_filter(title: &str) -> String {
+    title
+        .to_lowercase()
+        .chars()
+        .filter_map(|c| match c {
+            'a'..='z' | '0'..='9' => Some(c),
+            ' ' => Some('_'),
+            _ => None,
+        })
+        .collect()
+}
+
 #[allow(clippy::similar_names)]
 impl Episode {
     pub fn url_basename(&self) -> Result<StackString, Error> {
         if self.epurl.ends_with("media.mp3") || self.epurl.contains("https://feeds.acast.com") {
-            let basename: String = self
-                .title
-                .to_lowercase()
-                .chars()
-                .filter_map(|c| match c {
-                    'a'..='z' | '0'..='9' => Some(c),
-                    ' ' => Some('_'),
-                    _ => None,
-                })
-                .collect();
-            Ok(format!("{}.mp3", basename).into())
+            Ok(format!("{}.mp3", basename_filter(&self.title)).into())
+        } else if self.epurl.ends_with(".m4a") {
+            Ok(format!("{}.m4a", basename_filter(&self.title)).into())
         } else if self.epurl.contains("newrustacean/") {
             let basename = self
                 .epurl
