@@ -62,10 +62,11 @@ fn basename_filter(title: &str) -> String {
 #[allow(clippy::similar_names)]
 impl Episode {
     pub fn url_basename(&self) -> Result<StackString, Error> {
-        if self.epurl.ends_with("media.mp3") || self.epurl.contains("https://feeds.acast.com") {
+        if self.epurl.ends_with("media.mp3")
+            || self.epurl.contains("https://feeds.acast.com")
+            || self.epurl.contains("cloudfront.net")
+        {
             Ok(format!("{}.mp3", basename_filter(&self.title)).into())
-        } else if self.epurl.ends_with(".m4a") {
-            Ok(format!("{}.m4a", basename_filter(&self.title)).into())
         } else if self.epurl.contains("newrustacean/") {
             let basename = self
                 .epurl
