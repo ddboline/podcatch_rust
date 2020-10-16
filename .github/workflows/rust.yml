@@ -1,11 +1,25 @@
 name: Rust
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:12.4-alpine
+        env:
+          POSTGRES_DB: podcatch
+          POSTGRES_PASSWORD: 2UtcMAAvNuBHPqK9
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
     - uses: actions/checkout@v1
@@ -15,5 +29,25 @@ jobs:
       run: cargo clippy -- -W clippy::pedantic
     - name: Build
       run: cargo build --verbose
+
     - name: Run tests
-      run: cargo test --verbose --all
+      run: |
+        psql $DATABASE_URL < scripts/podcasts.sql && \
+        psql $DATABASE_URL < scripts/episodes.sql && \
+        psql $DATABASE_URL < scripts/google_music_metadata.sql && \
+        cargo test --verbose --all && \
+        cargo install cargo-tarpaulin && \
+        cargo tarpaulin --verbose --all-features --workspace --out Xml
+      env:
+        DATABASE_URL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/podcatch
+
+    - name: Upload to codecov.io
+      uses: codecov/codecov-action@v1.0.2
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
+
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v1
+      with:
+        name: code-coverage-report
+        path: cobertura.xml
