@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.4.11"
+version = "0.4.12"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -32,7 +32,7 @@ smartstring = "0.2"
 itertools = "0.9"
 envy = "0.4"
 deadqueue = "0.1"
-smallvec = "1.4"
+smallvec = "1.5"
 tokio-compat-02 = "0.1"
 postgres_query = { git = "https://github.com/ddboline/rust-postgres-query.git", branch="master" }
 stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.9", features=["postgres_types"] }
