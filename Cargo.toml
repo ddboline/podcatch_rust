@@ -8,7 +8,7 @@ edition = "2018"
 name = "podcatch-rust"
 priority = "optional"
 section = "rust"
-provides = "notification-app-rust"
+provides = "podcatch-rust"
 extended-description = """\
 CLI Podcatcher written in Rust."""
 
