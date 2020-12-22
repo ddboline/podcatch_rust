@@ -1,11 +1,16 @@
 [package]
 name = "podcatch_rust"
-version = "0.4.12"
+version = "0.4.13"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
 [package.metadata.deb]
 name = "podcatch-rust"
+priority = "optional"
+section = "rust"
+provides = "notification-app-rust"
+extended-description = """\
+CLI Podcatcher written in Rust."""
 
 [dependencies]
 deadpool = "0.6"
@@ -13,9 +18,9 @@ deadpool-postgres = "0.6"
 dotenv = "0.15"
 tokio-postgres = "0.6"
 reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"]}
-rand = "0.7"
+rand = "0.8"
 roxmltree = "0.13"
-checksums = "0.6"
+checksums = "0.7"
 structopt = "0.3"
 walkdir = "2.3"
 serde = {version="1.0", features=["derive"]}
@@ -38,7 +43,7 @@ deadqueue = "0.1"
 smallvec = "1.5"
 tokio-compat-02 = "0.1"
 postgres_query = { git = "https://github.com/ddboline/rust-postgres-query.git", branch="master" }
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.9", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }
 
 [[bin]]
 name = "podcatch-rust"
