@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.4.13"
+version = "0.5.0"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -13,13 +13,13 @@ extended-description = """\
 CLI Podcatcher written in Rust."""
 
 [dependencies]
-deadpool = "0.6"
-deadpool-postgres = "0.6"
+deadpool = "0.7"
+deadpool-postgres = "0.7"
 dotenv = "0.15"
-tokio-postgres = "0.6"
-reqwest = {version="0.10", features=["cookies", "json", "rustls-tls", "stream"]}
+tokio-postgres = "0.7"
+reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"]}
 rand = "0.8"
-roxmltree = "0.13"
+roxmltree = "0.14"
 checksums = "0.7"
 structopt = "0.3"
 walkdir = "2.3"
@@ -28,22 +28,22 @@ serde_json = "1.0"
 log = "0.4"
 env_logger = "0.8"
 crossbeam-utils = "0.8"
-bytes = "0.5"
+bytes = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"
 dirs = "3.0"
-tokio = {version = "0.3", features=["full"]}
+tokio = {version = "1.0", features=["full"]}
 async-trait = "0.1"
 futures = "0.3"
 derive_more = "0.99"
 smartstring = "0.2"
-itertools = "0.9"
+itertools = "0.10"
 envy = "0.4"
-deadqueue = "0.1"
-smallvec = "1.5"
-tokio-compat-02 = "0.1"
+deadqueue = "0.2"
+smallvec = "1.6"
+tokio-compat-02 = "0.2"
 postgres_query = { git = "https://github.com/ddboline/rust-postgres-query.git", branch="master" }
-stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.1.10", features=["postgres_types"] }
+stack-string = { git = "https://github.com/ddboline/stack-string-rs.git", tag="0.2.0", features=["postgres_types"] }
 
 [[bin]]
 name = "podcatch-rust"
