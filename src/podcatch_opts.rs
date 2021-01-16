@@ -4,11 +4,15 @@ use reqwest::Url;
 use stack_string::StackString;
 use std::{collections::HashSet, path::Path, sync::Arc};
 use structopt::StructOpt;
+use refinery::embed_migrations;
+use std::ops::DerefMut;
 
 use crate::{
     config::Config, episode::Episode, episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool,
     pod_connection::PodConnection, podcast::Podcast, stdout_channel::StdoutChannel,
 };
+
+embed_migrations!("migrations");
 
 #[derive(StructOpt, Debug)]
 pub struct PodcatchOpts {
@@ -26,6 +30,8 @@ pub struct PodcatchOpts {
     directory: Option<StackString>,
     #[structopt(short = "f", long = "filename")]
     filename: Option<StackString>,
+    #[structopt(long="run-migrations")]
+    run_migrations: bool,
 }
 
 impl PodcatchOpts {
@@ -34,6 +40,13 @@ impl PodcatchOpts {
 
         let config = Config::init_config()?;
         let pool = PgPool::new(&config.database_url);
+
+        if opts.run_migrations {
+            let mut conn = pool.get().await?;
+            migrations::runner().run_async(conn.deref_mut().deref_mut()).await?;
+            return Ok(());
+        }
+
         let stdout = StdoutChannel::new();
 
         if opts.do_list {
