@@ -33,6 +33,8 @@ jobs:
         ./target/debug/podcatch-rust --run-migrations
       env:
         DATABASE_URL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/podcatch
+        GOOGLE_MUSIC_DIRECTORY: /tmp
+        USER: root
 
     - name: Run tests
       run: |
@@ -41,6 +43,8 @@ jobs:
         cargo tarpaulin --verbose --all-features --workspace --out Xml
       env:
         DATABASE_URL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/podcatch
+        GOOGLE_MUSIC_DIRECTORY: /tmp
+        USER: root
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v1.0.2
