@@ -7,7 +7,6 @@ use rand::{
 use reqwest::{Client, Response, Url};
 use std::time::Duration;
 use tokio::time::sleep;
-use tokio_compat_02::FutureExt;
 
 #[async_trait]
 pub trait ExponentialRetry {
@@ -17,7 +16,7 @@ pub trait ExponentialRetry {
         let mut timeout: f64 = 1.0;
         let range = Uniform::from(0..1000);
         loop {
-            match self.get_client().get(url.clone()).send().compat().await {
+            match self.get_client().get(url.clone()).send().await {
                 Ok(resp) => return Ok(resp),
                 Err(err) => {
                     sleep(Duration::from_millis((timeout * 1000.0) as u64)).await;

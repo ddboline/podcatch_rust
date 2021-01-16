@@ -28,18 +28,23 @@ jobs:
     - name: Clippy
       run: cargo clippy -- -W clippy::pedantic
     - name: Build
-      run: cargo build --verbose
+      run: |
+        cargo build --verbose && \
+        ./target/debug/podcatch-rust --run-migrations
+      env:
+        DATABASE_URL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/podcatch
+        GOOGLE_MUSIC_DIRECTORY: /tmp
+        USER: root
 
     - name: Run tests
       run: |
-        psql $DATABASE_URL < scripts/podcasts.sql && \
-        psql $DATABASE_URL < scripts/episodes.sql && \
-        psql $DATABASE_URL < scripts/google_music_metadata.sql && \
         cargo test --verbose --all && \
         cargo install cargo-tarpaulin && \
         cargo tarpaulin --verbose --all-features --workspace --out Xml
       env:
         DATABASE_URL: postgresql://postgres:2UtcMAAvNuBHPqK9@localhost:5432/podcatch
+        GOOGLE_MUSIC_DIRECTORY: /tmp
+        USER: root
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v1.0.2
