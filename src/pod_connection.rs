@@ -167,7 +167,7 @@ mod tests {
     async fn test_pod_connection_get() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
-        let pod = Podcast::from_index(&pool, 1).await.unwrap().unwrap();
+        let pod = Podcast::from_index(&pool, 19).await.unwrap().unwrap();
         let url: Url = pod.feedurl.parse().unwrap();
         let conn = PodConnection::new();
         let resp = conn.get(&url).await.unwrap();

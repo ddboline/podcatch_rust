@@ -7,7 +7,6 @@ use stack_string::StackString;
 #[derive(Default, Debug, Deserialize)]
 pub struct ConfigInner {
     pub database_url: StackString,
-    pub google_music_directory: StackString,
     pub user: StackString,
 }
 

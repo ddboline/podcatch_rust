@@ -1,8 +1,7 @@
 use anyhow::{format_err, Error};
-use deadpool::managed::Object;
-use deadpool_postgres::{ClientWrapper, Config, Pool};
+use deadpool_postgres::{Client, Config, Pool};
 use std::fmt;
-use tokio_postgres::{error::Error as PgError, Config as PgConfig, NoTls};
+use tokio_postgres::{Config as PgConfig, NoTls};
 
 use stack_string::StackString;
 
@@ -58,7 +57,7 @@ impl PgPool {
         }
     }
 
-    pub async fn get(&self) -> Result<Object<ClientWrapper, PgError>, Error> {
+    pub async fn get(&self) -> Result<Client, Error> {
         self.pool
             .as_ref()
             .ok_or_else(|| format_err!("No Pool Exists"))?
