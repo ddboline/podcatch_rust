@@ -1,11 +1,10 @@
 use anyhow::{format_err, Error};
 use futures::future::try_join_all;
+use refinery::embed_migrations;
 use reqwest::Url;
 use stack_string::StackString;
 use std::{collections::HashSet, path::Path, sync::Arc};
 use structopt::StructOpt;
-use refinery::embed_migrations;
-use std::ops::DerefMut;
 
 use crate::{
     config::Config, episode::Episode, episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool,
@@ -30,7 +29,7 @@ pub struct PodcatchOpts {
     directory: Option<StackString>,
     #[structopt(short = "f", long = "filename")]
     filename: Option<StackString>,
-    #[structopt(long="run-migrations")]
+    #[structopt(long = "run-migrations")]
     run_migrations: bool,
 }
 
@@ -43,7 +42,7 @@ impl PodcatchOpts {
 
         if opts.run_migrations {
             let mut conn = pool.get().await?;
-            migrations::runner().run_async(conn.deref_mut().deref_mut()).await?;
+            migrations::runner().run_async(&mut **conn).await?;
             return Ok(());
         }
 
@@ -163,7 +162,7 @@ async fn process_all_podcasts(pool: &PgPool, stdout: &StdoutChannel) -> Result<(
             }
         });
         let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        for line in results?.into_iter().filter_map(|x| x) {
+        for line in results?.into_iter().flatten() {
             stdout.send(line.join("\n"));
         }
 
