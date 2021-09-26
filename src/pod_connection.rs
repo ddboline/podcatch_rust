@@ -87,11 +87,11 @@ impl PodConnection {
             if d.node_type() == NodeType::Element && d.tag_name().name() == "title" {
                 if epurl.is_some() {
                     if let Some(epi) = Self::get_current_episode(
-                        &podcast,
+                        podcast,
                         title.as_ref().map(StackString::as_str),
                         epurl.as_ref().map(StackString::as_str),
                         enctype.as_ref().map(StackString::as_str),
-                        &filter_urls,
+                        filter_urls,
                         latest_epid,
                     )
                     .await
@@ -117,11 +117,11 @@ impl PodConnection {
         }
 
         if let Some(epi) = Self::get_current_episode(
-            &podcast,
+            podcast,
             title.as_ref().map(StackString::as_str),
             epurl.as_ref().map(StackString::as_str),
             enctype.as_ref().map(StackString::as_str),
-            &filter_urls,
+            filter_urls,
             latest_epid,
         )
         .await

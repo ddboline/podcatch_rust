@@ -37,7 +37,7 @@ impl Hash for Episode {
     where
         H: Hasher,
     {
-        self.title.hash(state)
+        self.title.hash(state);
     }
 }
 
@@ -178,7 +178,7 @@ impl Episode {
         );
         pool.get()
             .await?
-            .execute(query.sql(), &query.parameters())
+            .execute(query.sql(), query.parameters())
             .await
             .map_err(Into::into)
     }
@@ -201,7 +201,7 @@ impl Episode {
         );
         pool.get()
             .await?
-            .execute(query.sql(), &query.parameters())
+            .execute(query.sql(), query.parameters())
             .await
             .map_err(Into::into)
     }
@@ -235,7 +235,7 @@ impl Episode {
             conn.dump_to_file(&url, &outfile).await?;
             let path = Path::new(&outfile);
             if path.exists() {
-                let md5sum = get_md5sum(&path)?;
+                let md5sum = get_md5sum(path)?;
                 let mut p = self.clone();
                 debug!("{:?} {}", outfile, md5sum);
                 p.epguid.replace(md5sum.into());

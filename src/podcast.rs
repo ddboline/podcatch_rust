@@ -22,9 +22,9 @@ impl Podcast {
         furl: &Url,
         dir: &str,
     ) -> Result<Self, Error> {
-        let pod = if let Some(p) = Self::from_index(&pool, cid).await? {
+        let pod = if let Some(p) = Self::from_index(pool, cid).await? {
             p
-        } else if let Some(p) = Self::from_feedurl(&pool, furl.as_str()).await? {
+        } else if let Some(p) = Self::from_feedurl(pool, furl.as_str()).await? {
             p
         } else {
             let pod = Self {
@@ -49,7 +49,7 @@ impl Podcast {
             );
             pool.get()
                 .await?
-                .execute(query.sql(), &query.parameters())
+                .execute(query.sql(), query.parameters())
                 .await?;
             pod
         };
