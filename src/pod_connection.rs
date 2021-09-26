@@ -189,7 +189,7 @@ mod tests {
             .unwrap_or(0);
         let current_urls: HashSet<Episode> = current_episodes.into_iter().collect();
 
-        let pod = Podcast::from_index(&pool, 23).await.unwrap().unwrap();
+        let pod = Podcast::from_index(&pool, 19).await.unwrap().unwrap();
         let conn = PodConnection::new();
         let new_episodes = conn
             .parse_feed(&pod, &current_urls, max_epid + 1)
