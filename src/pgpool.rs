@@ -51,7 +51,7 @@ impl PgPool {
             pgurl: pgurl.into(),
             pool: Some(
                 config
-                    .create_pool(NoTls)
+                    .create_pool(None, NoTls)
                     .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl)),
             ),
         }
