@@ -1,5 +1,5 @@
 use anyhow::Error;
-use postgres_query::FromSqlRow;
+use postgres_query::{query, FromSqlRow};
 use reqwest::Url;
 use stack_string::StackString;
 use std::collections::HashSet;
@@ -37,7 +37,7 @@ impl Podcast {
                 .parse_feed(&pod, &HashSet::new(), 0)
                 .await?;
             assert!(!episodes.is_empty());
-            let query = postgres_query::query!(
+            let query = query!(
                 r#"
                     INSERT INTO podcasts (castid, castname, feedurl, directory)
                     VALUES ($castid,$castname,$feedurl,$directory)
@@ -47,75 +47,56 @@ impl Podcast {
                 feedurl = pod.feedurl,
                 directory = pod.directory
             );
-            pool.get()
-                .await?
-                .execute(query.sql(), query.parameters())
-                .await?;
-            pod
+            let conn = pool.get().await?;
+            query.fetch_one(&conn).await?
         };
         Ok(pod)
     }
 
     pub async fn from_index(pool: &PgPool, cid: i32) -> Result<Option<Self>, Error> {
-        let query = r#"
-            SELECT
-                castid, castname, feedurl, directory
-            FROM podcasts
-            WHERE castid = $1
-        "#;
-        if let Some(row) = pool.get().await?.query(query, &[&cid]).await?.get(0) {
-            let pod = Self::from_row(row)?;
-            Ok(Some(pod))
-        } else {
-            Ok(None)
-        }
+        let query = query!(
+            r#"
+                SELECT
+                    castid, castname, feedurl, directory
+                FROM podcasts
+                WHERE castid = $castid
+            "#, castid = cid);
+        let conn = pool.get().await?;
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn from_feedurl(pool: &PgPool, feedurl: &str) -> Result<Option<Self>, Error> {
-        let query = r#"
-            SELECT
-                castid, castname, feedurl, directory
-            FROM podcasts
-            WHERE feedurl = $1
-        "#;
-        if let Some(row) = pool
-            .get()
-            .await?
-            .query(query, &[&feedurl.to_string()])
-            .await?
-            .get(0)
-        {
-            let pod = Self::from_row(row)?;
-            Ok(Some(pod))
-        } else {
-            Ok(None)
-        }
+        let query = query!(
+            r#"
+                SELECT
+                    castid, castname, feedurl, directory
+                FROM podcasts
+                WHERE feedurl = $feedurl
+            "#,
+            feedurl = feedurl
+        );
+        let conn = pool.get().await?;
+        query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
     pub async fn get_all_podcasts(pool: &PgPool) -> Result<Vec<Self>, Error> {
-        let query = r#"
+        let query = query!(r#"
             SELECT
                 castid, castname, feedurl, directory
             FROM podcasts
-        "#;
-        pool.get()
-            .await?
-            .query(query, &[])
-            .await?
-            .iter()
-            .map(|row| {
-                let pod = Self::from_row(row)?;
-                Ok(pod)
-            })
-            .collect()
+        "#);
+        let conn = pool.get().await?;
+        query.fetch(&conn).await.map_err(Into::into)
     }
 
-    pub async fn get_max_castid(pool: &PgPool) -> Result<i32, Error> {
-        let query = "SELECT MAX(castid) FROM podcasts";
-        match pool.get().await?.query(query, &[]).await?.get(0) {
-            Some(row) => row.try_get(0).map_err(Into::into),
-            None => Ok(0),
-        }
+    pub async fn get_max_castid(pool: &PgPool) -> Result<Option<i32>, Error> {
+        #[derive(FromSqlRow)]
+        struct Wrap(i32);
+
+        let query = query!("SELECT MAX(castid) FROM podcasts");
+        let conn = pool.get().await?;
+        let val: Option<Wrap> = query.fetch_opt(&conn).await?;
+        Ok(val.map(|x| x.0))
     }
 }
 

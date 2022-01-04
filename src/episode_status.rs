@@ -11,15 +11,20 @@ pub enum EpisodeStatus {
     Skipped,
 }
 
-impl fmt::Display for EpisodeStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match self {
+impl EpisodeStatus {
+    pub fn to_str(self) -> &'static str {
+        match self {
             Self::Ready => "Ready",
             Self::Downloaded => "Downloaded",
             Self::Error => "Error",
             Self::Skipped => "Skipped",
-        };
-        write!(f, "{}", s)
+        }
+    }
+}
+
+impl fmt::Display for EpisodeStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_str())
     }
 }
 
@@ -66,7 +71,7 @@ impl ToSql for EpisodeStatus {
     where
         Self: Sized,
     {
-        self.to_string().to_sql(ty, out)
+        self.to_str().to_sql(ty, out)
     }
 
     fn accepts(ty: &Type) -> bool
@@ -81,6 +86,6 @@ impl ToSql for EpisodeStatus {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        self.to_string().to_sql_checked(ty, out)
+        self.to_str().to_sql_checked(ty, out)
     }
 }

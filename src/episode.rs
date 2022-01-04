@@ -159,7 +159,7 @@ impl Episode {
     }
 
     pub async fn insert_episode(&self, pool: &PgPool) -> Result<u64, Error> {
-        let status = self.status.to_string();
+        let status = self.status.to_str();
         let query = postgres_query::query!(
             r#"
             INSERT INTO episodes (
@@ -184,7 +184,7 @@ impl Episode {
     }
 
     pub async fn update_episode(&self, pool: &PgPool) -> Result<u64, Error> {
-        let status = self.status.to_string();
+        let status = self.status.to_str();
         let query = postgres_query::query!(
             r#"
                 UPDATE episodes

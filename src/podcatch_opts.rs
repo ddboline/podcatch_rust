@@ -5,10 +5,11 @@ use reqwest::Url;
 use stack_string::StackString;
 use std::{collections::HashSet, path::Path, sync::Arc};
 use structopt::StructOpt;
+use stdout_channel::StdoutChannel;
 
 use crate::{
     config::Config, episode::Episode, episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool,
-    pod_connection::PodConnection, podcast::Podcast, stdout_channel::StdoutChannel,
+    pod_connection::PodConnection, podcast::Podcast,
 };
 
 embed_migrations!("migrations");
@@ -27,8 +28,6 @@ pub struct PodcatchOpts {
     castid: Option<i32>,
     #[structopt(short = "d", long = "directory")]
     directory: Option<StackString>,
-    #[structopt(short = "f", long = "filename")]
-    filename: Option<StackString>,
     #[structopt(long = "run-migrations")]
     run_migrations: bool,
 }
@@ -63,7 +62,7 @@ impl PodcatchOpts {
                 if let Some(podcast_url) = opts.podcast_url.as_ref() {
                     let castid = match opts.castid {
                         Some(c) => c,
-                        None => Podcast::get_max_castid(&pool).await?,
+                        None => Podcast::get_max_castid(&pool).await?.unwrap_or(0),
                     };
                     let directory = opts.directory.unwrap_or_else(|| {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
@@ -81,7 +80,7 @@ impl PodcatchOpts {
     }
 }
 
-async fn process_all_podcasts(pool: &PgPool, stdout: &StdoutChannel) -> Result<(), Error> {
+async fn process_all_podcasts(pool: &PgPool, stdout: &StdoutChannel<StackString>) -> Result<(), Error> {
     let pod_conn = PodConnection::new();
 
     let futures = Podcast::get_all_podcasts(pool)
