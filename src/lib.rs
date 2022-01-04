@@ -22,8 +22,8 @@ pub mod podcatch_opts;
 
 use anyhow::Error;
 use checksums::{hash_reader, Algorithm};
-use std::{fs::File, path::Path};
 use stack_string::StackString;
+use std::{fs::File, path::Path};
 
 pub fn get_md5sum(path: &Path) -> Result<StackString, Error> {
     let mut f = File::open(path)?;

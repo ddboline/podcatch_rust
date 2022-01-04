@@ -4,8 +4,8 @@ use refinery::embed_migrations;
 use reqwest::Url;
 use stack_string::StackString;
 use std::{collections::HashSet, path::Path, sync::Arc};
-use structopt::StructOpt;
 use stdout_channel::StdoutChannel;
+use structopt::StructOpt;
 
 use crate::{
     config::Config, episode::Episode, episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool,
@@ -80,7 +80,10 @@ impl PodcatchOpts {
     }
 }
 
-async fn process_all_podcasts(pool: &PgPool, stdout: &StdoutChannel<StackString>) -> Result<(), Error> {
+async fn process_all_podcasts(
+    pool: &PgPool,
+    stdout: &StdoutChannel<StackString>,
+) -> Result<(), Error> {
     let pod_conn = PodConnection::new();
 
     let futures = Podcast::get_all_podcasts(pool)

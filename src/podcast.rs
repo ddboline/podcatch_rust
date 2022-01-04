@@ -60,7 +60,9 @@ impl Podcast {
                     castid, castname, feedurl, directory
                 FROM podcasts
                 WHERE castid = $castid
-            "#, castid = cid);
+            "#,
+            castid = cid
+        );
         let conn = pool.get().await?;
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
@@ -80,11 +82,13 @@ impl Podcast {
     }
 
     pub async fn get_all_podcasts(pool: &PgPool) -> Result<Vec<Self>, Error> {
-        let query = query!(r#"
+        let query = query!(
+            r#"
             SELECT
                 castid, castname, feedurl, directory
             FROM podcasts
-        "#);
+        "#
+        );
         let conn = pool.get().await?;
         query.fetch(&conn).await.map_err(Into::into)
     }
