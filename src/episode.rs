@@ -238,7 +238,7 @@ impl Episode {
                 let md5sum = get_md5sum(path)?;
                 let mut p = self.clone();
                 debug!("{:?} {}", outfile, md5sum);
-                p.epguid.replace(md5sum.into());
+                p.epguid.replace(md5sum);
                 p.status = EpisodeStatus::Downloaded;
                 Ok(p)
             } else {

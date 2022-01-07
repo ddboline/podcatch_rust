@@ -187,7 +187,7 @@ async fn process_all_podcasts(
                             if let Ok(md5sum) = get_md5sum(&path) {
                                 let mut p = epi.clone();
                                 output.push(format!("update md5sum {} {}", fname, md5sum));
-                                p.epguid = Some(md5sum.into());
+                                p.epguid = Some(md5sum);
                                 p.update_episode(pool).await?;
                             }
                         } else if let Ok(url_) = epi.epurl.parse::<Url>() {
