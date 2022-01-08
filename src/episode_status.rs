@@ -24,7 +24,7 @@ impl EpisodeStatus {
 
 impl fmt::Display for EpisodeStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_str())
+        f.write_str(self.to_str())
     }
 }
 

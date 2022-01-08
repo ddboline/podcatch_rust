@@ -2,8 +2,8 @@ use anyhow::{format_err, Error};
 use futures::future::try_join_all;
 use refinery::embed_migrations;
 use reqwest::Url;
-use stack_string::StackString;
-use std::{collections::HashSet, path::Path, sync::Arc};
+use stack_string::{format_sstr, StackString};
+use std::{collections::HashSet, fmt::Write, path::Path, sync::Arc};
 use stdout_channel::StdoutChannel;
 use structopt::StructOpt;
 
@@ -50,11 +50,11 @@ impl PodcatchOpts {
         if opts.do_list {
             if let Some(castid) = opts.castid {
                 for eps in &Episode::get_all_episodes(&pool, castid).await? {
-                    stdout.send(format!("{:?}", eps));
+                    stdout.send(format_sstr!("{:?}", eps));
                 }
             } else {
                 for pod in &Podcast::get_all_podcasts(&pool).await? {
-                    stdout.send(format!("{:?}", pod));
+                    stdout.send(format_sstr!("{:?}", pod));
                 }
             }
         } else if opts.do_add {
@@ -66,9 +66,14 @@ impl PodcatchOpts {
                     };
                     let directory = opts.directory.unwrap_or_else(|| {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-                        format!("{}/{}", home_dir, podcast_name).into()
+                        format_sstr!("{}/{}", home_dir, podcast_name).into()
                     });
-                    stdout.send(format!("Add {} {:?} {}", podcast_name, podcast_url, castid));
+                    stdout.send(format_sstr!(
+                        "Add {} {:?} {}",
+                        podcast_name,
+                        podcast_url,
+                        castid
+                    ));
                     Podcast::add_podcast(&pool, castid, podcast_name, podcast_url, &directory)
                         .await?;
                 }
@@ -122,7 +127,7 @@ async fn process_all_podcasts(
             .filter(|e| e.status != EpisodeStatus::Ready && e.status != EpisodeStatus::Downloaded)
             .collect();
 
-        stdout.send(format!(
+        stdout.send(format_sstr!(
             "podcast {} {} {} {} {}",
             pod.castname,
             max_epid,
@@ -137,7 +142,7 @@ async fn process_all_podcasts(
             async move {
                 if let Some(directory) = pod.directory.as_ref() {
                     let directory_path = Path::new(directory.as_str());
-                    let mut output = vec![format!(
+                    let mut output = vec![format_sstr!(
                         "new download {} {} {}",
                         epi.epurl,
                         directory,
@@ -146,7 +151,7 @@ async fn process_all_podcasts(
                     if let Some(mut new_epi) =
                         Episode::from_epurl(pool, pod.castid, &epi.epurl).await?
                     {
-                        output.push(format!("new title {}", epi.title));
+                        output.push(format_sstr!("new title {}", epi.title));
                         new_epi.title = epi.title.clone();
                         new_epi.update_episode(pool).await?;
                     } else {
@@ -154,7 +159,7 @@ async fn process_all_podcasts(
                         if new_epi.epguid.is_some() {
                             new_epi.insert_episode(pool).await?;
                         } else {
-                            output.push(format!("No md5sum? {:?}", new_epi));
+                            output.push(format_sstr!("No md5sum? {:?}", new_epi));
                         }
                     }
                     Ok(Some(output))
@@ -186,12 +191,12 @@ async fn process_all_podcasts(
                         if path.exists() {
                             if let Ok(md5sum) = get_md5sum(&path) {
                                 let mut p = epi.clone();
-                                output.push(format!("update md5sum {} {}", fname, md5sum));
+                                output.push(format_sstr!("update md5sum {} {}", fname, md5sum));
                                 p.epguid = Some(md5sum);
                                 p.update_episode(pool).await?;
                             }
                         } else if let Ok(url_) = epi.epurl.parse::<Url>() {
-                            output.push(format!("download {:?} {}", url_, fname));
+                            output.push(format_sstr!("download {:?} {}", url_, fname));
                             let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
                             new_epi.update_episode(pool).await?;
                         }

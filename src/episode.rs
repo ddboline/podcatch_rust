@@ -3,9 +3,10 @@ use itertools::Itertools;
 use log::debug;
 use postgres_query::FromSqlRow;
 use reqwest::Url;
-use stack_string::StackString;
+use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
+    fmt::Write,
     hash::{Hash, Hasher},
     path::Path,
 };
@@ -66,7 +67,7 @@ impl Episode {
             || self.epurl.contains("https://feeds.acast.com")
             || self.epurl.contains("cloudfront.net")
         {
-            Ok(format!("{}.mp3", basename_filter(&self.title)).into())
+            Ok(format_sstr!("{}.mp3", basename_filter(&self.title)).into())
         } else if self.epurl.contains("newrustacean/") {
             let basename = self
                 .epurl
