@@ -67,7 +67,7 @@ impl Episode {
             || self.epurl.contains("https://feeds.acast.com")
             || self.epurl.contains("cloudfront.net")
         {
-            Ok(format_sstr!("{}.mp3", basename_filter(&self.title)).into())
+            Ok(format_sstr!("{}.mp3", basename_filter(&self.title)))
         } else if self.epurl.contains("newrustacean/") {
             let basename = self
                 .epurl

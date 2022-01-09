@@ -66,7 +66,7 @@ impl PodcatchOpts {
                     };
                     let directory = opts.directory.unwrap_or_else(|| {
                         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-                        format_sstr!("{}/{}", home_dir, podcast_name).into()
+                        format_sstr!("{}/{}", home_dir, podcast_name)
                     });
                     stdout.send(format_sstr!(
                         "Add {} {:?} {}",
