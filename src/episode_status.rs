@@ -37,7 +37,7 @@ impl FromStr for EpisodeStatus {
             "Downloaded" => Ok(Self::Downloaded),
             "Error" => Ok(Self::Error),
             "Skipped" => Ok(Self::Skipped),
-            _ => Err(format_err!("Invalid string {}", s)),
+            _ => Err(format_err!("Invalid string {s}")),
         }
     }
 }

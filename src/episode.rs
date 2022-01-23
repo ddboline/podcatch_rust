@@ -246,7 +246,7 @@ impl Episode {
                 Err(format_err!("Download failed"))
             }
         } else {
-            Err(format_err!("Unkown failure {:?}", self))
+            Err(format_err!("Unkown failure {self:?}"))
         }
     }
 }

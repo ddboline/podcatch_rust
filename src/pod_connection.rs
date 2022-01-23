@@ -76,7 +76,7 @@ impl PodConnection {
     ) -> Result<Vec<Episode>, Error> {
         let url = podcast.feedurl.parse()?;
         let text = self.get(&url).await?.text().await?;
-        let doc = Document::parse(&text).map_err(|e| format_err!("{:?}", e))?;
+        let doc = Document::parse(&text).map_err(|e| format_err!("{e:?}"))?;
 
         let mut episodes = Vec::new();
         let mut title: Option<StackString> = None;
