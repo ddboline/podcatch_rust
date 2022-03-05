@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.5.8"
+version = "0.5.9"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -33,18 +33,17 @@ tokio = {version = "1.17", features=["full"]}
 async-trait = "0.1"
 futures = "0.3"
 derive_more = "0.99"
-smartstring = "0.2"
 itertools = "0.10"
 envy = "0.4"
 deadqueue = "0.2"
 smallvec = "1.6"
 refinery = {version="0.8", features=["tokio-postgres"]}
-stack-string = { version="0.6", features=["postgres_types"] }
+stack-string = { version="0.7", features=["postgres_types"] }
 deadpool = "0.9"
 deadpool-postgres = "0.10"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}
 tokio-postgres = "0.7"
-stdout-channel = "0.4"
+stdout-channel = "0.5"
 
 [[bin]]
 name = "podcatch-rust"
