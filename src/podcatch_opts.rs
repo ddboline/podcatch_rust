@@ -33,6 +33,8 @@ pub struct PodcatchOpts {
 }
 
 impl PodcatchOpts {
+    /// # Errors
+    /// Return error if db query fails
     pub async fn process_args() -> Result<(), Error> {
         let opts = Self::from_args();
 

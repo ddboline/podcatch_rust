@@ -20,6 +20,7 @@ impl Default for PodConnection {
 }
 
 impl PodConnection {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             client: Client::new(),
@@ -68,6 +69,8 @@ impl PodConnection {
         None
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub async fn parse_feed(
         &self,
         podcast: &Podcast,
@@ -132,6 +135,8 @@ impl PodConnection {
         Ok(episodes)
     }
 
+    /// # Errors
+    /// Return error if api call fails
     pub async fn dump_to_file(&self, url: &Url, outpath: &Path) -> Result<(), Error> {
         if outpath.exists() {
             Err(format_err!("File exists"))

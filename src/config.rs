@@ -14,20 +14,14 @@ pub struct ConfigInner {
 pub struct Config(Arc<ConfigInner>);
 
 impl ConfigInner {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn from_env() -> Self {
+    fn from_env() -> Self {
         envy::from_env().unwrap_or_else(|_| Self::default())
     }
 }
 
 impl Config {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+    /// # Errors
+    /// Return error if parsing environment variables fails
     pub fn init_config() -> Result<Self, Error> {
         let fname = Path::new("config.env");
         let config_dir = dirs::config_dir().ok_or_else(|| format_err!("No CONFIG directory"))?;

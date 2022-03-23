@@ -15,6 +15,8 @@ pub struct Podcast {
 }
 
 impl Podcast {
+    /// # Errors
+    /// Return error if db query fails
     pub async fn add_podcast(
         pool: &PgPool,
         cid: i32,
@@ -53,6 +55,8 @@ impl Podcast {
         Ok(pod)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn from_index(pool: &PgPool, cid: i32) -> Result<Option<Self>, Error> {
         let query = query!(
             r#"
@@ -67,6 +71,8 @@ impl Podcast {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn from_feedurl(pool: &PgPool, feedurl: &str) -> Result<Option<Self>, Error> {
         let query = query!(
             r#"
@@ -81,6 +87,8 @@ impl Podcast {
         query.fetch_opt(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_all_podcasts(pool: &PgPool) -> Result<Vec<Self>, Error> {
         let query = query!(
             r#"
@@ -93,6 +101,8 @@ impl Podcast {
         query.fetch(&conn).await.map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_max_castid(pool: &PgPool) -> Result<Option<i32>, Error> {
         #[derive(FromSqlRow)]
         struct Wrap(i32);

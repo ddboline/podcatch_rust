@@ -62,6 +62,8 @@ fn basename_filter(title: &str) -> String {
 
 #[allow(clippy::similar_names)]
 impl Episode {
+    /// # Errors
+    /// Return error if parsing `epurl` fails
     pub fn url_basename(&self) -> Result<StackString, Error> {
         if self.epurl.ends_with("media.mp3")
             || self.epurl.contains("https://feeds.acast.com")
@@ -89,6 +91,8 @@ impl Episode {
         }
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
@@ -103,6 +107,8 @@ impl Episode {
         }
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn from_epurl(pool: &PgPool, cid: i32, epurl: &str) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
@@ -123,6 +129,8 @@ impl Episode {
         }
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Self>, Error> {
         let query = r#"
             SELECT
@@ -143,6 +151,8 @@ impl Episode {
         }
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_all_episodes(pool: &PgPool, cid: i32) -> Result<Vec<Self>, Error> {
         let query = r#"
             SELECT
@@ -159,6 +169,8 @@ impl Episode {
             .collect()
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn insert_episode(&self, pool: &PgPool) -> Result<u64, Error> {
         let status = self.status.to_str();
         let query = postgres_query::query!(
@@ -184,6 +196,8 @@ impl Episode {
             .map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn update_episode(&self, pool: &PgPool) -> Result<u64, Error> {
         let status = self.status.to_str();
         let query = postgres_query::query!(
@@ -207,6 +221,8 @@ impl Episode {
             .map_err(Into::into)
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn get_max_epid(pool: &PgPool) -> Result<i32, Error> {
         let query = "SELECT MAX(episodeid) FROM episodes";
         pool.get()
@@ -218,6 +234,8 @@ impl Episode {
             .and_then(|row| row.try_get(0).map_err(Into::into))
     }
 
+    /// # Errors
+    /// Return error if db query fails
     pub async fn download_episode(
         &self,
         conn: &PodConnection,

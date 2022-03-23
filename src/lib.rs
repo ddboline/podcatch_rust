@@ -1,4 +1,3 @@
-#![allow(clippy::must_use_candidate)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::cast_precision_loss)]
@@ -7,7 +6,6 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::shadow_unrelated)]
-#![allow(clippy::missing_errors_doc)]
 #![allow(clippy::used_underscore_binding)]
 #![allow(clippy::missing_panics_doc)]
 
@@ -25,6 +23,8 @@ use checksums::{hash_reader, Algorithm};
 use stack_string::StackString;
 use std::{fs::File, path::Path};
 
+/// # Errors
+/// Return error if opening file fails
 pub fn get_md5sum(path: &Path) -> Result<StackString, Error> {
     let mut f = File::open(path)?;
     Ok(hash_reader(&mut f, Algorithm::MD5).to_lowercase().into())

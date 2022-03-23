@@ -27,6 +27,7 @@ impl PartialEq for PgPool {
 }
 
 impl PgPool {
+    #[must_use]
     pub fn new(pgurl: &str) -> Self {
         let pgconf: PgConfig = pgurl.parse().expect("Failed to parse Url");
 
@@ -57,6 +58,8 @@ impl PgPool {
         }
     }
 
+    /// # Errors
+    /// Return error if we fail to grab connection from pool
     pub async fn get(&self) -> Result<Client, Error> {
         self.pool
             .as_ref()
