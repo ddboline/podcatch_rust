@@ -3,7 +3,7 @@ use futures::future::try_join_all;
 use refinery::embed_migrations;
 use reqwest::Url;
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashSet, fmt::Write, path::Path, sync::Arc};
+use std::{collections::HashSet, path::Path, sync::Arc};
 use stdout_channel::StdoutChannel;
 use structopt::StructOpt;
 

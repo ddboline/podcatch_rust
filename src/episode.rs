@@ -6,7 +6,6 @@ use reqwest::Url;
 use stack_string::{format_sstr, StackString};
 use std::{
     borrow::Borrow,
-    fmt::Write,
     hash::{Hash, Hasher},
     path::Path,
 };
