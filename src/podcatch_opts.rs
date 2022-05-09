@@ -78,7 +78,7 @@ impl PodcatchOpts {
         } else {
             process_all_podcasts(&pool, &stdout).await?;
         }
-        stdout.close().await
+        stdout.close().await.map_err(Into::into)
     }
 }
 

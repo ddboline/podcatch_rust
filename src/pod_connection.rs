@@ -160,7 +160,7 @@ impl ExponentialRetry for PodConnection {
 #[cfg(test)]
 mod tests {
     use reqwest::Url;
-    use std::{collections::HashSet, fs::remove_file, path::Path};
+    use std::{collections::HashSet};
 
     use crate::{
         config::Config, episode::Episode, exponential_retry::ExponentialRetry, pgpool::PgPool,
@@ -201,20 +201,5 @@ mod tests {
             .await
             .unwrap();
         assert!(new_episodes.len() > 0);
-    }
-
-    #[tokio::test]
-    async fn test_dump_to_file() {
-        let url = "https://dts.podtrac.com/redirect.mp3/api.entale.co/download/47015acd-f383-416d-8934-344cd944bfab/6215e4ba-ea1a-43e6-8d76-3de84fa5f52e/media.mp3";
-        let url: Url = url.parse().unwrap();
-        let pod_conn = PodConnection::new();
-        if pod_conn
-            .dump_to_file(&url, &Path::new("/tmp/temp.mp3"))
-            .await
-            .is_ok()
-        {
-            remove_file("/tmp/temp.mp3").unwrap();
-        }
-        assert!(true);
     }
 }
