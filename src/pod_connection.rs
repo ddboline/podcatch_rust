@@ -160,7 +160,7 @@ impl ExponentialRetry for PodConnection {
 #[cfg(test)]
 mod tests {
     use reqwest::Url;
-    use std::{collections::HashSet};
+    use std::collections::HashSet;
 
     use crate::{
         config::Config, episode::Episode, exponential_retry::ExponentialRetry, pgpool::PgPool,
