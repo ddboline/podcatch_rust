@@ -1,11 +1,11 @@
 use anyhow::{format_err, Error};
+use clap::Parser;
 use futures::future::try_join_all;
 use refinery::embed_migrations;
 use reqwest::Url;
 use stack_string::{format_sstr, StackString};
 use std::{collections::HashSet, path::Path, sync::Arc};
 use stdout_channel::StdoutChannel;
-use structopt::StructOpt;
 
 use crate::{
     config::Config, episode::Episode, episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool,
@@ -14,21 +14,21 @@ use crate::{
 
 embed_migrations!("migrations");
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 pub struct PodcatchOpts {
-    #[structopt(short = "l", long = "list")]
+    #[clap(short = 'l', long = "list")]
     do_list: bool,
-    #[structopt(short = "a", long = "add")]
+    #[clap(short = 'a', long = "add")]
     do_add: bool,
-    #[structopt(short = "n", long = "name")]
+    #[clap(short = 'n', long = "name")]
     podcast_name: Option<StackString>,
-    #[structopt(short = "u", long = "url", parse(try_from_str))]
+    #[clap(short = 'u', long = "url", parse(try_from_str))]
     podcast_url: Option<Url>,
-    #[structopt(short = "i", long = "castid")]
+    #[clap(short = 'i', long = "castid")]
     castid: Option<i32>,
-    #[structopt(short = "d", long = "directory")]
+    #[clap(short = 'd', long = "directory")]
     directory: Option<StackString>,
-    #[structopt(long = "run-migrations")]
+    #[clap(long = "run-migrations")]
     run_migrations: bool,
 }
 

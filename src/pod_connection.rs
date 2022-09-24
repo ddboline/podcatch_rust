@@ -27,7 +27,7 @@ impl PodConnection {
         }
     }
 
-    async fn get_current_episode(
+    fn get_current_episode(
         podcast: &Podcast,
         title: Option<&str>,
         epurl: Option<&str>,
@@ -96,9 +96,7 @@ impl PodConnection {
                         enctype.as_ref().map(StackString::as_str),
                         filter_urls,
                         latest_epid,
-                    )
-                    .await
-                    {
+                    ) {
                         episodes.push(epi);
                     }
                     title = None;
@@ -126,9 +124,7 @@ impl PodConnection {
             enctype.as_ref().map(StackString::as_str),
             filter_urls,
             latest_epid,
-        )
-        .await
-        {
+        ) {
             episodes.push(epi);
         }
 
