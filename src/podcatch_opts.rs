@@ -14,6 +14,10 @@ use crate::{
 
 embed_migrations!("migrations");
 
+fn parse_url(s: &str) -> Result<Url, String> {
+    s.parse().map_err(|e| format!("{e}"))
+}
+
 #[derive(Parser, Debug)]
 pub struct PodcatchOpts {
     #[clap(short = 'l', long = "list")]
@@ -22,7 +26,7 @@ pub struct PodcatchOpts {
     do_add: bool,
     #[clap(short = 'n', long = "name")]
     podcast_name: Option<StackString>,
-    #[clap(short = 'u', long = "url", parse(try_from_str))]
+    #[clap(short = 'u', long = "url", value_parser = parse_url)]
     podcast_url: Option<Url>,
     #[clap(short = 'i', long = "castid")]
     castid: Option<i32>,
@@ -36,7 +40,7 @@ impl PodcatchOpts {
     /// # Errors
     /// Return error if db query fails
     pub async fn process_args() -> Result<(), Error> {
-        let opts = Self::from_args();
+        let opts = Self::parse();
 
         let config = Config::init_config()?;
         let pool = PgPool::new(&config.database_url);

@@ -142,10 +142,13 @@ mod tests {
     async fn test_podcasts_from_feedurl() {
         let config = Config::init_config().unwrap();
         let pool = PgPool::new(&config.database_url);
-        let p = Podcast::from_feedurl(&pool, "http://nightvale.libsyn.com/rss")
-            .await
-            .unwrap()
-            .unwrap();
+        let p = Podcast::from_feedurl(
+            &pool,
+            "http://feeds.nightvalepresents.com/welcometonightvalepodcast",
+        )
+        .await
+        .unwrap()
+        .unwrap();
         debug!("{:?}", p);
         assert_eq!(p.castid, 24);
         assert_eq!(&p.castname, "Welcome to Night Vale");
