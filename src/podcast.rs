@@ -1,5 +1,6 @@
 use anyhow::Error;
-use postgres_query::{query, FromSqlRow};
+use futures::Stream;
+use postgres_query::{query, Error as PqError, FromSqlRow};
 use reqwest::Url;
 use stack_string::StackString;
 use std::collections::HashSet;
@@ -89,7 +90,9 @@ impl Podcast {
 
     /// # Errors
     /// Return error if db query fails
-    pub async fn get_all_podcasts(pool: &PgPool) -> Result<Vec<Self>, Error> {
+    pub async fn get_all_podcasts(
+        pool: &PgPool,
+    ) -> Result<impl Stream<Item = Result<Self, PqError>>, Error> {
         let query = query!(
             r#"
             SELECT
@@ -98,7 +101,7 @@ impl Podcast {
         "#
         );
         let conn = pool.get().await?;
-        query.fetch(&conn).await.map_err(Into::into)
+        query.fetch_streaming(&conn).await.map_err(Into::into)
     }
 
     /// # Errors

@@ -1,6 +1,6 @@
 use anyhow::{format_err, Error};
 use clap::Parser;
-use futures::future::try_join_all;
+use futures::{future::try_join_all, TryStreamExt};
 use refinery::embed_migrations;
 use reqwest::Url;
 use stack_string::{format_sstr, StackString};
@@ -59,7 +59,8 @@ impl PodcatchOpts {
                     stdout.send(format_sstr!("{eps:?}"));
                 }
             } else {
-                for pod in &Podcast::get_all_podcasts(&pool).await? {
+                let mut stream = Box::pin(Podcast::get_all_podcasts(&pool).await?);
+                while let Some(pod) = stream.try_next().await? {
                     stdout.send(format_sstr!("{pod:?}"));
                 }
             }
@@ -91,31 +92,28 @@ async fn process_all_podcasts(
     stdout: &StdoutChannel<StackString>,
 ) -> Result<(), Error> {
     let pod_conn = PodConnection::new();
+    let podcasts: Vec<_> = Podcast::get_all_podcasts(pool).await?.try_collect().await?;
+    let futures = podcasts.into_iter().map(|pod| {
+        let pool = pool.clone();
+        let pod_conn = pod_conn.clone();
+        let pod = Arc::new(pod);
+        async move {
+            let episodes = Episode::get_all_episodes(&pool, pod.castid).await?;
+            let max_epid = Episode::get_max_epid(&pool).await?;
 
-    let futures = Podcast::get_all_podcasts(pool)
-        .await?
-        .into_iter()
-        .map(|pod| {
-            let pool = pool.clone();
-            let pod_conn = pod_conn.clone();
-            let pod = Arc::new(pod);
-            async move {
-                let episodes = Episode::get_all_episodes(&pool, pod.castid).await?;
-                let max_epid = Episode::get_max_epid(&pool).await?;
+            let episode_map: Result<HashSet<Episode>, Error> =
+                episodes.into_iter().map(Ok).collect();
 
-                let episode_map: Result<HashSet<Episode>, Error> =
-                    episodes.into_iter().map(Ok).collect();
+            let episode_map = episode_map?;
 
-                let episode_map = episode_map?;
+            let episode_list = pod_conn
+                .parse_feed(&pod, &episode_map, max_epid + 1)
+                .await?;
+            let episode_list = Arc::new(episode_list);
 
-                let episode_list = pod_conn
-                    .parse_feed(&pod, &episode_map, max_epid + 1)
-                    .await?;
-                let episode_list = Arc::new(episode_list);
-
-                Ok((pod, episode_list, max_epid, episode_map))
-            }
-        });
+            Ok((pod, episode_list, max_epid, episode_map))
+        }
+    });
     let results: Result<Vec<_>, Error> = try_join_all(futures).await;
 
     for (pod, episode_list, max_epid, episode_map) in results? {
