@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.5.19"
+version = "0.5.20"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -16,7 +16,7 @@ CLI Podcatcher written in Rust."""
 dotenv = "0.15"
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
 rand = "0.8"
-roxmltree = "0.17"
+roxmltree = "0.18"
 checksums = "0.9"
 clap = {version="4.0", features=["derive"]}
 walkdir = "2.3"
@@ -28,8 +28,8 @@ crossbeam-utils = "0.8"
 bytes = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"
-dirs = "4.0"
-tokio = {version = "1.21", features=["full"]}
+dirs = "5.0"
+tokio = {version = "1.26", features=["full"]}
 async-trait = "0.1"
 futures = "0.3"
 derive_more = "0.99"
