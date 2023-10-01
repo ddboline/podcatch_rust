@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.5.21"
+version = "0.5.22"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -13,37 +13,37 @@ extended-description = """\
 CLI Podcatcher written in Rust."""
 
 [dependencies]
-dotenv = "0.15"
-reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
-rand = "0.8"
-roxmltree = "0.18"
+anyhow = "1.0"
+async-trait = "0.1"
+bytes = "1.0"
 checksums = "0.9"
 clap = {version="4.0", features=["derive"]}
-walkdir = "2.3"
+crossbeam-utils = "0.8"
+deadpool = "0.10"
+deadpool-postgres = "0.11"
+deadqueue = "0.2"
+derive_more = "0.99"
+dirs = "5.0"
+dotenv = "0.15"
+envy = "0.4"
+env_logger = "0.10"
+futures = "0.3"
+itertools = "0.11"
+log = "0.4"
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
+rand = "0.8"
+refinery = {version="0.8", features=["tokio-postgres"]}
+reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
+roxmltree = "0.18"
 serde = {version="1.0", features=["derive"]}
 serde_json = "1.0"
-log = "0.4"
-env_logger = "0.10"
-crossbeam-utils = "0.8"
-bytes = "1.0"
-anyhow = "1.0"
-thiserror = "1.0"
-dirs = "5.0"
-tokio = {version = "1.26", features=["full"]}
-async-trait = "0.1"
-futures = "0.3"
-derive_more = "0.99"
-itertools = "0.11"
-envy = "0.4"
-deadqueue = "0.2"
 smallvec = "1.6"
-refinery = {version="0.8", features=["tokio-postgres"]}
-stack-string = { version="0.8", features=["postgres_types"] }
-deadpool = "0.9"
-deadpool-postgres = "0.10"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.4", features=["deadpool"]}
-tokio-postgres = "0.7"
+stack-string = {git = "https://github.com/ddboline/stack-string-rs.git", features=["postgres_types"], tag="0.9.2"}
 stdout-channel = "0.6"
+thiserror = "1.0"
+tokio = {version = "1.32", features=["full"]}
+tokio-postgres = "0.7"
+walkdir = "2.3"
 
 [[bin]]
 name = "podcatch-rust"
