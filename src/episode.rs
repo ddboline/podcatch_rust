@@ -93,12 +93,12 @@ impl Episode {
     /// # Errors
     /// Return error if db query fails
     pub async fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Self>, Error> {
-        let query = r#"
+        let query = r"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND episodeid = $2
-        "#;
+        ";
         if let Some(row) = pool.get().await?.query(query, &[&cid, &eid]).await?.get(0) {
             Ok(Some(Self::from_row(row)?))
         } else {
@@ -109,12 +109,12 @@ impl Episode {
     /// # Errors
     /// Return error if db query fails
     pub async fn from_epurl(pool: &PgPool, cid: i32, epurl: &str) -> Result<Option<Self>, Error> {
-        let query = r#"
+        let query = r"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND epurl = $2
-        "#;
+        ";
         if let Some(row) = pool
             .get()
             .await?
@@ -131,12 +131,12 @@ impl Episode {
     /// # Errors
     /// Return error if db query fails
     pub async fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Self>, Error> {
-        let query = r#"
+        let query = r"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1 AND epguid = $2
-        "#;
+        ";
         if let Some(row) = pool
             .get()
             .await?
@@ -153,12 +153,12 @@ impl Episode {
     /// # Errors
     /// Return error if db query fails
     pub async fn get_all_episodes(pool: &PgPool, cid: i32) -> Result<Vec<Self>, Error> {
-        let query = r#"
+        let query = r"
             SELECT
                 castid, episodeid, title, epurl, enctype, status, epguid
             FROM episodes
             WHERE castid = $1
-        "#;
+        ";
         pool.get()
             .await?
             .query(query, &[&cid])
