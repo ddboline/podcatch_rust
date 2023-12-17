@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.5.23"
+version = "0.5.24"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -20,7 +20,7 @@ checksums = "0.9"
 clap = {version="4.0", features=["derive"]}
 crossbeam-utils = "0.8"
 deadpool = "0.10"
-deadpool-postgres = "0.11"
+deadpool-postgres = "0.12"
 deadqueue = "0.2"
 derive_more = "0.99"
 dirs = "5.0"
@@ -30,7 +30,7 @@ env_logger = "0.10"
 futures = "0.3"
 itertools = "0.12"
 log = "0.4"
-postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.5", features=["deadpool"]}
+postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.6", features=["deadpool"]}
 rand = "0.8"
 refinery = {version="0.8", features=["tokio-postgres"]}
 reqwest = {version="0.11", features=["cookies", "json", "rustls-tls", "stream"], default_features=false}
