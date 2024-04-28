@@ -99,7 +99,7 @@ impl Episode {
             FROM episodes
             WHERE castid = $1 AND episodeid = $2
         ";
-        if let Some(row) = pool.get().await?.query(query, &[&cid, &eid]).await?.get(0) {
+        if let Some(row) = pool.get().await?.query(query, &[&cid, &eid]).await?.first() {
             Ok(Some(Self::from_row(row)?))
         } else {
             Ok(None)
@@ -120,7 +120,7 @@ impl Episode {
             .await?
             .query(query, &[&cid, &epurl])
             .await?
-            .get(0)
+            .first()
         {
             Ok(Some(Self::from_row(row)?))
         } else {
@@ -142,7 +142,7 @@ impl Episode {
             .await?
             .query(query, &[&cid, &epguid])
             .await?
-            .get(0)
+            .first()
         {
             Ok(Some(Self::from_row(row)?))
         } else {
@@ -228,7 +228,7 @@ impl Episode {
             .await?
             .query(query, &[])
             .await?
-            .get(0)
+            .first()
             .ok_or_else(|| format_err!("No episodes"))
             .and_then(|row| row.try_get(0).map_err(Into::into))
     }
