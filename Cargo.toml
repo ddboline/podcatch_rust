@@ -1,6 +1,6 @@
 [package]
 name = "podcatch_rust"
-version = "0.5.25"
+version = "0.5.26"
 authors = ["Daniel Boline <ddboline@gmail.com>"]
 edition = "2018"
 
@@ -19,7 +19,7 @@ bytes = "1.0"
 checksums = "0.9"
 clap = {version="4.0", features=["derive"]}
 crossbeam-utils = "0.8"
-deadpool = "0.11"
+deadpool = "0.12"
 deadpool-postgres = "0.13"
 deadqueue = "0.2"
 derive_more = "0.99"
