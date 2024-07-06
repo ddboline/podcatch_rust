@@ -27,9 +27,10 @@ impl PartialEq for PgPool {
 }
 
 impl PgPool {
-    #[must_use]
-    pub fn new(pgurl: &str) -> Self {
-        let pgconf: PgConfig = pgurl.parse().expect("Failed to parse Url");
+    /// # Errors
+    /// Return error if pool setup fails
+    pub fn new(pgurl: &str) -> Result<Self, Error> {
+        let pgconf: PgConfig = pgurl.parse()?;
 
         let mut config = Config::default();
 
@@ -48,17 +49,12 @@ impl PgPool {
             config.dbname.replace(db.to_string());
         }
 
-        let pool = config
-            .builder(NoTls)
-            .unwrap_or_else(|_| panic!("failed to create builder"))
-            .max_size(4)
-            .build()
-            .unwrap_or_else(|_| panic!("Failed to create pool {}", pgurl));
+        let pool = config.builder(NoTls)?.max_size(4).build()?;
 
-        Self {
+        Ok(Self {
             pgurl: pgurl.into(),
             pool: Some(pool),
-        }
+        })
     }
 
     /// # Errors

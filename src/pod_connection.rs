@@ -155,6 +155,7 @@ impl ExponentialRetry for PodConnection {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Error;
     use reqwest::Url;
     use std::collections::HashSet;
 
@@ -165,24 +166,26 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn test_pod_connection_get() {
-        let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
-        let pod = Podcast::from_index(&pool, 19).await.unwrap().unwrap();
-        let url: Url = pod.feedurl.parse().unwrap();
+    async fn test_pod_connection_get() -> Result<(), Error> {
+        let config = Config::init_config()?;
+        let pool = PgPool::new(&config.database_url)?;
+        let pod = Podcast::from_index(&pool, 19).await?.unwrap();
+        let url: Url = pod.feedurl.parse()?;
         let conn = PodConnection::new();
-        let resp = conn.get(&url).await.unwrap();
-        let text = resp.text().await.unwrap();
+        let resp = conn.get(&url).await?;
+        let text = resp.text().await?;
 
         assert!(text.starts_with("<?xml"));
+
+        Ok(())
     }
 
     #[tokio::test]
     #[ignore]
-    async fn test_pod_connection_parse_feed() {
-        let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
-        let current_episodes = Episode::get_all_episodes(&pool, 1).await.unwrap();
+    async fn test_pod_connection_parse_feed() -> Result<(), Error> {
+        let config = Config::init_config()?;
+        let pool = PgPool::new(&config.database_url)?;
+        let current_episodes = Episode::get_all_episodes(&pool, 1).await?;
         let max_epid = current_episodes
             .iter()
             .map(|e| e.episodeid)
@@ -190,12 +193,10 @@ mod tests {
             .unwrap_or(0);
         let current_urls: HashSet<Episode> = current_episodes.into_iter().collect();
 
-        let pod = Podcast::from_index(&pool, 19).await.unwrap().unwrap();
+        let pod = Podcast::from_index(&pool, 19).await?.unwrap();
         let conn = PodConnection::new();
-        let new_episodes = conn
-            .parse_feed(&pod, &current_urls, max_epid + 1)
-            .await
-            .unwrap();
+        let new_episodes = conn.parse_feed(&pod, &current_urls, max_epid + 1).await?;
         assert!(new_episodes.len() > 0);
+        Ok(())
     }
 }

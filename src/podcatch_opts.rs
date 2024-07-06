@@ -43,7 +43,7 @@ impl PodcatchOpts {
         let opts = Self::parse();
 
         let config = Config::init_config()?;
-        let pool = PgPool::new(&config.database_url);
+        let pool = PgPool::new(&config.database_url)?;
 
         if opts.run_migrations {
             let mut conn = pool.get().await?;

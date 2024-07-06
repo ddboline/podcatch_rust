@@ -270,16 +270,20 @@ impl Episode {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Error;
+
     use crate::{config::Config, episode::Episode, pgpool::PgPool};
 
     #[tokio::test]
     #[ignore]
-    async fn test_episodes_get_all_episodes() {
-        let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
+    async fn test_episodes_get_all_episodes() -> Result<(), Error> {
+        let config = Config::init_config()?;
+        let pool = PgPool::new(&config.database_url)?;
 
-        let eps = Episode::get_all_episodes(&pool, 1).await.unwrap();
+        let eps = Episode::get_all_episodes(&pool, 1).await?;
 
         assert!(eps.len() > 100);
+
+        Ok(())
     }
 }

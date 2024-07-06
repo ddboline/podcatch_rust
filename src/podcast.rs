@@ -119,16 +119,17 @@ impl Podcast {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Error;
     use log::debug;
 
     use crate::{config::Config, pgpool::PgPool, podcast::Podcast};
 
     #[tokio::test]
     #[ignore]
-    async fn test_podcasts_from_index() {
-        let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
-        let p = Podcast::from_index(&pool, 19).await.unwrap().unwrap();
+    async fn test_podcasts_from_index() -> Result<(), Error> {
+        let config = Config::init_config()?;
+        let pool = PgPool::new(&config.database_url)?;
+        let p = Podcast::from_index(&pool, 19).await?.unwrap();
         debug!("{:?}", p);
         assert_eq!(
             &p.castname,
@@ -138,22 +139,23 @@ mod tests {
             &p.feedurl,
             "http://minnesota.publicradio.org/tools/podcasts/song-of-the-day.php"
         );
+        Ok(())
     }
 
     #[tokio::test]
     #[ignore]
-    async fn test_podcasts_from_feedurl() {
-        let config = Config::init_config().unwrap();
-        let pool = PgPool::new(&config.database_url);
+    async fn test_podcasts_from_feedurl() -> Result<(), Error> {
+        let config = Config::init_config()?;
+        let pool = PgPool::new(&config.database_url)?;
         let p = Podcast::from_feedurl(
             &pool,
             "http://feeds.nightvalepresents.com/welcometonightvalepodcast",
         )
-        .await
-        .unwrap()
+        .await?
         .unwrap();
         debug!("{:?}", p);
         assert_eq!(p.castid, 24);
         assert_eq!(&p.castname, "Welcome to Night Vale");
+        Ok(())
     }
 }
