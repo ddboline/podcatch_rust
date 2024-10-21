@@ -33,10 +33,10 @@ impl Config {
             &default_fname
         };
 
-        dotenv::dotenv().ok();
+        dotenvy::dotenv().ok();
 
         if env_file.exists() {
-            dotenv::from_path(env_file).ok();
+            dotenvy::from_path(env_file).ok();
         }
 
         let config = ConfigInner::from_env();
