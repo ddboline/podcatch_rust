@@ -1,11 +1,11 @@
 use anyhow::Error;
 use async_trait::async_trait;
 use rand::{
-    distributions::{Distribution, Uniform},
-    thread_rng,
+    distr::{Distribution, Uniform},
+    rng as thread_rng,
 };
 use reqwest::{Client, Response, Url};
-use std::time::Duration;
+use std::{convert::TryFrom, time::Duration};
 use tokio::time::sleep;
 
 #[async_trait]
@@ -14,7 +14,7 @@ pub trait ExponentialRetry {
 
     async fn get(&self, url: &Url) -> Result<Response, Error> {
         let mut timeout: f64 = 1.0;
-        let range = Uniform::from(0..1000);
+        let range = Uniform::try_from(0..1000)?;
         loop {
             match self.get_client().get(url.clone()).send().await {
                 Ok(resp) => return Ok(resp),
