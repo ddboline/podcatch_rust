@@ -84,7 +84,7 @@ impl Episode {
             epurl
                 .path()
                 .split('/')
-                .last()
+                .next_back()
                 .map(Into::into)
                 .ok_or_else(|| format_err!("No basename"))
         }
@@ -255,7 +255,7 @@ impl Episode {
             if path.exists() {
                 let md5sum = get_md5sum(path)?;
                 let mut p = self.clone();
-                debug!("{outfile:?} {md5sum}",);
+                debug!("{} {md5sum}", outfile.display());
                 p.epguid.replace(md5sum);
                 p.status = EpisodeStatus::Downloaded;
                 Ok(p)
