@@ -3,8 +3,9 @@ use bytes::BytesMut;
 use std::{fmt, str::FromStr};
 use tokio_postgres::types::{FromSql, IsNull, ToSql, Type};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum EpisodeStatus {
+    #[default]
     Ready,
     Downloaded,
     Error,
@@ -40,12 +41,6 @@ impl FromStr for EpisodeStatus {
             "Skipped" => Ok(Self::Skipped),
             _ => Err(format_err!("Invalid string {s}")),
         }
-    }
-}
-
-impl Default for EpisodeStatus {
-    fn default() -> Self {
-        Self::Ready
     }
 }
 
