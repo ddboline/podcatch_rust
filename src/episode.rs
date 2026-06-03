@@ -12,9 +12,9 @@ use std::{
 use tokio::fs::remove_file;
 
 use crate::{
-    episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool, pod_connection::PodConnection,
+    date_time_wrapper::DateTimeWrapper, episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool,
+    pod_connection::PodConnection,
 };
-use crate::date_time_wrapper::DateTimeWrapper;
 
 #[derive(Default, Clone, Debug, FromSqlRow, Eq)]
 pub struct Episode {

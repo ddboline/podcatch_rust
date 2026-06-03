@@ -10,6 +10,7 @@
 #![allow(clippy::missing_panics_doc)]
 
 pub mod config;
+pub mod date_time_wrapper;
 pub mod episode;
 pub mod episode_status;
 pub mod exponential_retry;
@@ -17,7 +18,6 @@ pub mod pgpool;
 pub mod pod_connection;
 pub mod podcast;
 pub mod podcatch_opts;
-pub mod date_time_wrapper;
 
 use anyhow::Error;
 use checksums::{hash_reader, Algorithm};

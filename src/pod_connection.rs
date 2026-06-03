@@ -6,9 +6,12 @@ use stack_string::StackString;
 use std::{collections::HashSet, path::Path};
 use tokio::{fs::File, io::AsyncWriteExt};
 
-use crate::{episode::Episode, exponential_retry::ExponentialRetry, podcast::Podcast};
-use crate::date_time_wrapper::DateTimeWrapper;
-use crate::date_time_wrapper::iso8601::convert_pub_date_to_datetime;
+use crate::{
+    date_time_wrapper::{iso8601::convert_pub_date_to_datetime, DateTimeWrapper},
+    episode::Episode,
+    exponential_retry::ExponentialRetry,
+    podcast::Podcast,
+};
 
 #[derive(Clone)]
 pub struct PodConnection {
@@ -185,10 +188,10 @@ mod tests {
     use time::macros::datetime;
 
     use crate::{
-        config::Config, episode::Episode, exponential_retry::ExponentialRetry, pgpool::PgPool,
-        pod_connection::PodConnection, podcast::Podcast,
+        config::Config, date_time_wrapper::iso8601::convert_pub_date_to_datetime, episode::Episode,
+        exponential_retry::ExponentialRetry, pgpool::PgPool, pod_connection::PodConnection,
+        podcast::Podcast,
     };
-    use crate::date_time_wrapper::iso8601::convert_pub_date_to_datetime;
 
     #[tokio::test]
     #[ignore]
