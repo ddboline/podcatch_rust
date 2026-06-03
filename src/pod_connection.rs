@@ -7,6 +7,8 @@ use std::{collections::HashSet, path::Path};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::{episode::Episode, exponential_retry::ExponentialRetry, podcast::Podcast};
+use crate::date_time_wrapper::DateTimeWrapper;
+use crate::date_time_wrapper::iso8601::convert_pub_date_to_datetime;
 
 #[derive(Clone)]
 pub struct PodConnection {
@@ -32,6 +34,8 @@ impl PodConnection {
         title: Option<&str>,
         epurl: Option<&str>,
         enctype: Option<&str>,
+        description: Option<&str>,
+        pub_date: Option<DateTimeWrapper>,
         filter_urls: &HashSet<Episode>,
         latest_epid: i32,
     ) -> Option<Episode> {
@@ -42,6 +46,8 @@ impl PodConnection {
                 episodeid: latest_epid,
                 epurl: (*epurl).into(),
                 enctype: enctype.map_or_else(|| "".into(), Into::into),
+                description: description.map(Into::into),
+                pub_date,
                 ..Episode::default()
             };
 
@@ -85,6 +91,8 @@ impl PodConnection {
         let mut title: Option<StackString> = None;
         let mut epurl: Option<StackString> = None;
         let mut enctype: Option<StackString> = None;
+        let mut description: Option<StackString> = None;
+        let mut pub_date: Option<DateTimeWrapper> = None;
 
         for d in doc.root().descendants() {
             if d.node_type() == NodeType::Element && d.tag_name().name() == "title" {
@@ -94,6 +102,8 @@ impl PodConnection {
                         title.as_ref().map(StackString::as_str),
                         epurl.as_ref().map(StackString::as_str),
                         enctype.as_ref().map(StackString::as_str),
+                        description.as_ref().map(StackString::as_str),
+                        pub_date,
                         filter_urls,
                         latest_epid,
                     ) {
@@ -106,6 +116,18 @@ impl PodConnection {
                 }
                 if let Some(t) = d.text() {
                     title = Some(t.into());
+                }
+            }
+            if d.node_type() == NodeType::Element && d.tag_name().name() == "description" {
+                if let Some(t) = d.text() {
+                    description = Some(t.into());
+                }
+            }
+            if d.node_type() == NodeType::Element && d.tag_name().name() == "pubDate" {
+                if let Some(t) = d.text() {
+                    if let Ok(d) = convert_pub_date_to_datetime(t) {
+                        pub_date = Some(d.into());
+                    }
                 }
             }
             for a in d.attributes() {
@@ -122,6 +144,8 @@ impl PodConnection {
             title.as_ref().map(StackString::as_str),
             epurl.as_ref().map(StackString::as_str),
             enctype.as_ref().map(StackString::as_str),
+            description.as_ref().map(StackString::as_str),
+            pub_date,
             filter_urls,
             latest_epid,
         ) {
@@ -158,11 +182,13 @@ mod tests {
     use anyhow::Error;
     use reqwest::Url;
     use std::collections::HashSet;
+    use time::macros::datetime;
 
     use crate::{
         config::Config, episode::Episode, exponential_retry::ExponentialRetry, pgpool::PgPool,
         pod_connection::PodConnection, podcast::Podcast,
     };
+    use crate::date_time_wrapper::iso8601::convert_pub_date_to_datetime;
 
     #[tokio::test]
     #[ignore]
@@ -198,5 +224,16 @@ mod tests {
         let new_episodes = conn.parse_feed(&pod, &current_urls, max_epid + 1).await?;
         assert!(new_episodes.len() > 0);
         Ok(())
+    }
+
+    #[test]
+    fn test_pub_date() {
+        let date_str = "Mon, 01 Jun 2026 04:00:00 -0000";
+        let date = convert_pub_date_to_datetime(date_str).unwrap();
+        assert_eq!(date, datetime!(2026-06-01 04:00:00 +00:00));
+
+        let date_str = "Sun, 09 Feb 2020 06:00:00 +0100";
+        let date = convert_pub_date_to_datetime(date_str).unwrap();
+        assert_eq!(date, datetime!(2020-02-09 05:00:00 +00:00));
     }
 }

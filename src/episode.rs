@@ -14,6 +14,7 @@ use tokio::fs::remove_file;
 use crate::{
     episode_status::EpisodeStatus, get_md5sum, pgpool::PgPool, pod_connection::PodConnection,
 };
+use crate::date_time_wrapper::DateTimeWrapper;
 
 #[derive(Default, Clone, Debug, FromSqlRow, Eq)]
 pub struct Episode {
@@ -24,6 +25,8 @@ pub struct Episode {
     pub enctype: StackString,
     pub status: EpisodeStatus,
     pub epguid: Option<StackString>,
+    pub description: Option<StackString>,
+    pub pub_date: Option<DateTimeWrapper>,
 }
 
 impl PartialEq for Episode {

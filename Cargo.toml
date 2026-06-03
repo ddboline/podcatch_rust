@@ -31,6 +31,7 @@ futures = "0.3"
 itertools = "0.14"
 log = "0.4"
 postgres_query = {git = "https://github.com/ddboline/rust-postgres-query", tag = "0.3.9", features=["deadpool"]}
+postgres-types = {version="0.2", features=["with-time-0_3", "with-uuid-1", "with-serde_json-1", "derive"]}
 rand = "0.10"
 refinery = {version="0.9", features=["tokio-postgres"]}
 reqwest = {version="0.13", features=["cookies", "json", "stream"]}
@@ -41,6 +42,7 @@ smallvec = "1.15"
 stack-string = {version="1.1", features=["postgres_types"]}
 stdout-channel = "0.6"
 thiserror = "2.0"
+time = {version="0.3", features=["serde-human-readable", "macros", "formatting"]}
 tokio = {version = "1.52", features=["rt", "macros", "rt-multi-thread"]}
 tokio-postgres = "0.7"
 walkdir = "2.5"

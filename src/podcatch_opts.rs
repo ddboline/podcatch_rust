@@ -125,14 +125,20 @@ async fn process_all_podcasts(
             .iter()
             .filter(|e| e.status != EpisodeStatus::Ready && e.status != EpisodeStatus::Downloaded)
             .collect();
+        let update_episode_metadata: Vec<_> = episode_list.iter().filter(|e| {
+            e.status == EpisodeStatus::Ready
+                && episode_map.contains(*e)
+                && (e.description.is_some() || e.pub_date.is_some())
+        }).collect();
 
         stdout.send(format_sstr!(
-            "podcast {} {} {} {} {}",
+            "podcast {} {} {} {} {} {}",
             pod.castname,
             max_epid,
             episode_map.len(),
             new_episodes.len(),
             update_episodes.len(),
+            update_episode_metadata.len(),
         ));
 
         let futures = new_episodes.into_iter().map(|epi| {

@@ -17,6 +17,7 @@ pub mod pgpool;
 pub mod pod_connection;
 pub mod podcast;
 pub mod podcatch_opts;
+pub mod date_time_wrapper;
 
 use anyhow::Error;
 use checksums::{hash_reader, Algorithm};
