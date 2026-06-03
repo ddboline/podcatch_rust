@@ -75,6 +75,8 @@ pub mod iso8601 {
             .map_err(Into::into)
     }
 
+    /// # Errors
+    /// Returns error if serialization fails
     pub fn convert_pub_date_to_datetime(s: &str) -> Result<OffsetDateTime, Error> {
         let format = format_description!(
             "[weekday repr:short], [day padding:zero] [month repr:short] [year ] \
