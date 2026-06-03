@@ -184,9 +184,9 @@ impl ExponentialRetry for PodConnection {
 mod tests {
     use anyhow::Error;
     use reqwest::Url;
+    use stack_string::StackString;
     use std::collections::HashMap;
     use time::macros::datetime;
-    use stack_string::StackString;
 
     use crate::{
         config::Config, date_time_wrapper::iso8601::convert_pub_date_to_datetime, episode::Episode,

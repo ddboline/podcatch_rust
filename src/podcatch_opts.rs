@@ -101,8 +101,10 @@ async fn process_all_podcasts(
             let episodes = Episode::get_all_episodes(&pool, pod.castid).await?;
             let max_epid = Episode::get_max_epid(&pool).await?;
 
-            let episode_map: Result<HashMap<(i32, StackString), Episode>, Error> =
-                episodes.into_iter().map(|e| Ok(((e.castid, e.epurl.clone()), e))).collect();
+            let episode_map: Result<HashMap<(i32, StackString), Episode>, Error> = episodes
+                .into_iter()
+                .map(|e| Ok(((e.castid, e.epurl.clone()), e)))
+                .collect();
 
             let episode_map = Arc::new(episode_map?);
 
