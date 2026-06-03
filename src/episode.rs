@@ -98,7 +98,15 @@ impl Episode {
     pub async fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Self>, Error> {
         let query = r"
             SELECT
-                castid, episodeid, title, epurl, enctype, status, epguid
+                castid,
+                episodeid,
+                title,
+                epurl,
+                enctype,
+                status,
+                epguid,
+                description,
+                pub_date
             FROM episodes
             WHERE castid = $1 AND episodeid = $2
         ";
@@ -114,7 +122,15 @@ impl Episode {
     pub async fn from_epurl(pool: &PgPool, cid: i32, epurl: &str) -> Result<Option<Self>, Error> {
         let query = r"
             SELECT
-                castid, episodeid, title, epurl, enctype, status, epguid
+                castid,
+                episodeid,
+                title,
+                epurl,
+                enctype,
+                status,
+                epguid,
+                description,
+                pub_date
             FROM episodes
             WHERE castid = $1 AND epurl = $2
         ";
@@ -136,7 +152,15 @@ impl Episode {
     pub async fn from_epguid(pool: &PgPool, cid: i32, epguid: &str) -> Result<Option<Self>, Error> {
         let query = r"
             SELECT
-                castid, episodeid, title, epurl, enctype, status, epguid
+                castid,
+                episodeid,
+                title,
+                epurl,
+                enctype,
+                status,
+                epguid,
+                description,
+                pub_date
             FROM episodes
             WHERE castid = $1 AND epguid = $2
         ";
@@ -158,7 +182,15 @@ impl Episode {
     pub async fn get_all_episodes(pool: &PgPool, cid: i32) -> Result<Vec<Self>, Error> {
         let query = r"
             SELECT
-                castid, episodeid, title, epurl, enctype, status, epguid
+                castid,
+                episodeid,
+                title,
+                epurl,
+                enctype,
+                status,
+                epguid,
+                description,
+                pub_date
             FROM episodes
             WHERE castid = $1
         ";
@@ -178,9 +210,17 @@ impl Episode {
         let query = postgres_query::query!(
             r#"
             INSERT INTO episodes (
-                castid, episodeid, title, epurl, enctype, status, epguid
+                castid,
+                episodeid,
+                title,
+                epurl,
+                enctype,
+                status,
+                epguid,
+                description,
+                pub_date
             ) VALUES (
-                $castid, $episodeid, $title, $epurl, $enctype, $status, $epguid
+                $castid, $episodeid, $title, $epurl, $enctype, $status, $epguid, $description, $pub_date
             )
         "#,
             castid = self.castid,
@@ -189,7 +229,9 @@ impl Episode {
             epurl = self.epurl,
             enctype = self.enctype,
             status = status,
-            epguid = self.epguid
+            epguid = self.epguid,
+            description = self.description,
+            pub_date = self.pub_date,
         );
         pool.get()
             .await?
@@ -205,7 +247,7 @@ impl Episode {
         let query = postgres_query::query!(
             r#"
                 UPDATE episodes
-                SET title=$title,epurl=$epurl,enctype=$enctype,status=$status,epguid=$epguid
+                SET title=$title,epurl=$epurl,enctype=$enctype,status=$status,epguid=$epguid,description=$description,pub_date=$pub_date
                 WHERE castid=$castid AND episodeid=$episodeid
             "#,
             castid = self.castid,
@@ -214,7 +256,9 @@ impl Episode {
             epurl = self.epurl,
             enctype = self.enctype,
             status = status,
-            epguid = self.epguid
+            epguid = self.epguid,
+            description = self.description,
+            pub_date = self.pub_date,
         );
         pool.get()
             .await?

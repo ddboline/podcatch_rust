@@ -3,7 +3,7 @@ use futures::Stream;
 use postgres_query::{query, Error as PqError, FromSqlRow};
 use reqwest::Url;
 use stack_string::StackString;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use crate::{pgpool::PgPool, pod_connection::PodConnection};
 
@@ -37,7 +37,7 @@ impl Podcast {
                 directory: Some(dir.into()),
             };
             let episodes = PodConnection::new()
-                .parse_feed(&pod, &HashSet::new(), 0)
+                .parse_feed(&pod, &HashMap::new(), 0)
                 .await?;
             assert!(!episodes.is_empty());
             let query = query!(

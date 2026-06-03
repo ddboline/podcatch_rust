@@ -4,7 +4,7 @@ use futures::{future::try_join_all, TryStreamExt};
 use refinery::embed_migrations;
 use reqwest::Url;
 use stack_string::{format_sstr, StackString};
-use std::{collections::HashSet, path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 use stdout_channel::StdoutChannel;
 
 use crate::{
@@ -101,10 +101,10 @@ async fn process_all_podcasts(
             let episodes = Episode::get_all_episodes(&pool, pod.castid).await?;
             let max_epid = Episode::get_max_epid(&pool).await?;
 
-            let episode_map: Result<HashSet<Episode>, Error> =
-                episodes.into_iter().map(Ok).collect();
+            let episode_map: Result<HashMap<(i32, StackString), Episode>, Error> =
+                episodes.into_iter().map(|e| Ok(((e.castid, e.epurl.clone()), e))).collect();
 
-            let episode_map = episode_map?;
+            let episode_map = Arc::new(episode_map?);
 
             let episode_list = pod_conn
                 .parse_feed(&pod, &episode_map, max_epid + 1)
@@ -128,9 +128,8 @@ async fn process_all_podcasts(
         let update_episode_metadata: Vec<_> = episode_list
             .iter()
             .filter(|e| {
-                e.status == EpisodeStatus::Ready
-                    && episode_map.contains(*e)
-                    && (e.description.is_some() || e.pub_date.is_some())
+                e.status == EpisodeStatus::Downloaded
+                    && episode_map.contains_key(&(e.castid, e.epurl.clone()))
             })
             .collect();
 
@@ -208,6 +207,43 @@ async fn process_all_podcasts(
                             let new_epi = epi.download_episode(&pod_conn, directory_path).await?;
                             new_epi.update_episode(pool).await?;
                         }
+                    }
+                }
+                Ok(output)
+            }
+        });
+        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
+        for line in results? {
+            stdout.send(line.join("\n"));
+        }
+        let futures = update_episode_metadata.into_iter().map(|epi| {
+            let episode_map = episode_map.clone();
+            async move {
+                let mut output = Vec::new();
+                if let Some(ep) = episode_map.get(&(epi.castid, epi.epurl.clone())) {
+                    if ep.title != epi.title {
+                        output.push(format_sstr!("update title {} -> {}", ep.title, epi.title));
+                    }
+                    if ep.description != epi.description {
+                        output.push(format_sstr!(
+                            "update description {:?} -> {:?}",
+                            ep.description,
+                            epi.description
+                        ));
+                    }
+                    if ep.pub_date != epi.pub_date {
+                        output.push(format_sstr!(
+                            "update pub_date {:?} -> {:?}",
+                            ep.pub_date,
+                            epi.pub_date
+                        ));
+                    }
+                    if !output.is_empty() {
+                        let mut p = ep.clone();
+                        p.title = epi.title.clone();
+                        p.description = epi.description.clone();
+                        p.pub_date = epi.pub_date;
+                        p.update_episode(pool).await?;
                     }
                 }
                 Ok(output)

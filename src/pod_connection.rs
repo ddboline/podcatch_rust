@@ -3,7 +3,7 @@ use futures::StreamExt;
 use reqwest::{Client, Url};
 use roxmltree::{Document, NodeType};
 use stack_string::StackString;
-use std::{collections::HashSet, path::Path};
+use std::{collections::HashMap, path::Path};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::{
@@ -39,7 +39,7 @@ impl PodConnection {
         enctype: Option<&str>,
         description: Option<&str>,
         pub_date: Option<DateTimeWrapper>,
-        filter_urls: &HashSet<Episode>,
+        filter_urls: &HashMap<(i32, StackString), Episode>,
         latest_epid: i32,
     ) -> Option<Episode> {
         if let Some(epurl) = epurl.as_ref() {
@@ -54,11 +54,11 @@ impl PodConnection {
                 ..Episode::default()
             };
 
-            let url_exists = filter_urls.contains(ep.title.as_str());
+            let url_exists = filter_urls.contains_key(&(podcast.castid, ep.epurl.clone()));
 
             if !url_exists {
                 return Some(ep);
-            } else if let Some(epi) = filter_urls.get(ep.title.as_str()) {
+            } else if let Some(epi) = filter_urls.get(&(podcast.castid, ep.epurl.clone())) {
                 if let Some(title_) = title {
                     if title_ == "Wedgie diplomacy: Bugle 4083" {
                         return None;
@@ -83,7 +83,7 @@ impl PodConnection {
     pub async fn parse_feed(
         &self,
         podcast: &Podcast,
-        filter_urls: &HashSet<Episode>,
+        filter_urls: &HashMap<(i32, StackString), Episode>,
         mut latest_epid: i32,
     ) -> Result<Vec<Episode>, Error> {
         let url = podcast.feedurl.parse()?;
@@ -184,8 +184,9 @@ impl ExponentialRetry for PodConnection {
 mod tests {
     use anyhow::Error;
     use reqwest::Url;
-    use std::collections::HashSet;
+    use std::collections::HashMap;
     use time::macros::datetime;
+    use stack_string::StackString;
 
     use crate::{
         config::Config, date_time_wrapper::iso8601::convert_pub_date_to_datetime, episode::Episode,
@@ -220,7 +221,10 @@ mod tests {
             .map(|e| e.episodeid)
             .max()
             .unwrap_or(0);
-        let current_urls: HashSet<Episode> = current_episodes.into_iter().collect();
+        let current_urls: HashMap<(i32, StackString), Episode> = current_episodes
+            .into_iter()
+            .map(|e| ((e.castid, e.epurl.clone()), e))
+            .collect();
 
         let pod = Podcast::from_index(&pool, 19).await?.unwrap();
         let conn = PodConnection::new();
