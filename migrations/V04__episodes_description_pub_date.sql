@@ -1,0 +1,2 @@
+ALTER TABLE episodes ADD COLUMN description TEXT;
+ALTER TABLE episodes ADD COLUMN pub_date TIMESTAMP WITH TIME ZONE;
