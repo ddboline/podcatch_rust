@@ -81,7 +81,7 @@ pub mod iso8601 {
              [hour]:[minute]:[second] [offset_hour sign:mandatory][offset_minute]"
         );
 
-        OffsetDateTime::parse(&s, &format).map_err(Into::into)
+        OffsetDateTime::parse(s, &format).map_err(Into::into)
     }
 
     /// # Errors
