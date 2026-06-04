@@ -63,7 +63,8 @@ impl PodConnection {
             if !url_exists {
                 return Some(ep);
             } else if let Some(epi) = filter_urls.get(&(podcast.castid, ep.epurl.clone())) {
-                if epi.title != title || epi.description != description || epi.pub_date != pub_date {
+                if epi.title != title || epi.description != description || epi.pub_date != pub_date
+                {
                     let mut p = epi.clone();
                     p.title = title;
                     if let Some(description) = description {
