@@ -127,13 +127,6 @@ async fn process_all_podcasts(
             .iter()
             .filter(|e| e.status != EpisodeStatus::Ready && e.status != EpisodeStatus::Downloaded)
             .collect();
-        let update_episode_metadata: Vec<_> = episode_list
-            .iter()
-            .filter(|e| {
-                e.status == EpisodeStatus::Downloaded
-                    && episode_map.contains_key(&(e.castid, e.epurl.clone()))
-            })
-            .collect();
 
         stdout.send(format_sstr!(
             "podcast {} {} {} {} {} {}",
@@ -142,7 +135,7 @@ async fn process_all_podcasts(
             episode_map.len(),
             new_episodes.len(),
             update_episodes.len(),
-            update_episode_metadata.len(),
+            episode_list.len(),
         ));
 
         let futures = new_episodes.into_iter().map(|epi| {
@@ -218,42 +211,38 @@ async fn process_all_podcasts(
         for line in results? {
             stdout.send(line.join("\n"));
         }
-        let futures = update_episode_metadata.into_iter().map(|epi| {
-            let episode_map = episode_map.clone();
-            async move {
-                let mut output = Vec::new();
-                if let Some(ep) = episode_map.get(&(epi.castid, epi.epurl.clone())) {
-                    if ep.title != epi.title {
-                        output.push(format_sstr!("update title {} -> {}", ep.title, epi.title));
-                    }
-                    if ep.description != epi.description {
-                        output.push(format_sstr!(
-                            "update description {:?} -> {:?}",
-                            ep.description,
-                            epi.description
-                        ));
-                    }
-                    if ep.pub_date != epi.pub_date {
-                        output.push(format_sstr!(
-                            "update pub_date {:?} -> {:?}",
-                            ep.pub_date,
-                            epi.pub_date
-                        ));
-                    }
-                    if !output.is_empty() {
-                        let mut p = ep.clone();
-                        p.title = epi.title.clone();
-                        p.description = epi.description.clone();
-                        p.pub_date = epi.pub_date;
-                        p.update_episode(pool).await?;
-                    }
+        for epi in episode_list.iter() {
+            let mut output = Vec::new();
+            if let Some(ep) = episode_map.get(&(epi.castid, epi.epurl.clone())) {
+                if ep.title != epi.title {
+                    output.push(format_sstr!("update title {} -> {}", ep.title, epi.title));
                 }
-                Ok(output)
+                if ep.description != epi.description {
+                    output.push(format_sstr!(
+                        "update description {:?} -> {:?}",
+                        ep.description,
+                        epi.description
+                    ));
+                }
+                if ep.pub_date != epi.pub_date {
+                    output.push(format_sstr!(
+                        "update pub_date {:?} -> {:?}",
+                        ep.pub_date,
+                        epi.pub_date
+                    ));
+                }
+                if !output.is_empty() {
+                    let mut p = ep.clone();
+                    p.title = epi.title.clone();
+                    p.description = epi.description.clone();
+                    p.pub_date = epi.pub_date;
+                    p.update_episode(pool).await?;
+                }
             }
-        });
-        let results: Result<Vec<_>, Error> = try_join_all(futures).await;
-        for line in results? {
-            stdout.send(line.join("\n"));
+            for line in output {
+                stdout.send(line);
+            }
+            stdout.send(format_sstr!("update metadata {} {}", epi.castid, epi.epurl));
         }
     }
     Ok(())

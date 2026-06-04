@@ -32,6 +32,7 @@ impl PodConnection {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn get_current_episode(
         podcast: &Podcast,
         title: Option<&str>,
@@ -43,13 +44,16 @@ impl PodConnection {
         latest_epid: i32,
     ) -> Option<Episode> {
         if let Some(epurl) = epurl.as_ref() {
+            let title: StackString = title.map_or_else(|| "Unknown".into(), Into::into);
+            let epurl: StackString = (*epurl).into();
+            let description: Option<StackString> = description.map(Into::into);
             let ep = Episode {
-                title: title.map_or_else(|| "Unknown".into(), Into::into),
+                title: title.clone(),
                 castid: podcast.castid,
                 episodeid: latest_epid,
-                epurl: (*epurl).into(),
+                epurl: epurl.clone(),
                 enctype: enctype.map_or_else(|| "".into(), Into::into),
-                description: description.map(Into::into),
+                description: description.clone(),
                 pub_date,
                 ..Episode::default()
             };
@@ -59,19 +63,16 @@ impl PodConnection {
             if !url_exists {
                 return Some(ep);
             } else if let Some(epi) = filter_urls.get(&(podcast.castid, ep.epurl.clone())) {
-                if let Some(title_) = title {
-                    if title_ == "Wedgie diplomacy: Bugle 4083" {
-                        return None;
+                if epi.title != title || epi.description != description || epi.pub_date != pub_date {
+                    let mut p = epi.clone();
+                    p.title = title;
+                    if let Some(description) = description {
+                        p.description = Some(description);
                     }
-                    if epi.title != title_ {
-                        let mut p = epi.clone();
-                        p.title = title_.into();
-                        return Some(p);
-                    } else if let Some(epguid) = epi.epguid.as_ref() {
-                        if epguid.len() != 32 {
-                            return Some(epi.clone());
-                        }
+                    if let Some(pub_date) = pub_date {
+                        p.pub_date = Some(pub_date);
                     }
+                    return Some(p);
                 }
             }
         }
@@ -118,12 +119,12 @@ impl PodConnection {
                     latest_epid += 1;
                 }
                 if let Some(t) = d.text() {
-                    title = Some(t.into());
+                    title = Some(t.trim().into());
                 }
             }
             if d.node_type() == NodeType::Element && d.tag_name().name() == "description" {
                 if let Some(t) = d.text() {
-                    description = Some(t.into());
+                    description = Some(t.trim().into());
                 }
             }
             if d.node_type() == NodeType::Element && d.tag_name().name() == "pubDate" {
