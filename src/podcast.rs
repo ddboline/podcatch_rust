@@ -142,7 +142,7 @@ mod tests {
         );
         assert_eq!(
             &p.feedurl,
-            "http://minnesota.publicradio.org/tools/podcasts/song-of-the-day.php"
+            "https://feeds.publicradio.org/public_feeds/song-of-the-day"
         );
         Ok(())
     }
