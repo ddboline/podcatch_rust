@@ -93,6 +93,15 @@ impl Episode {
         }
     }
 
+    pub fn export_filename(&self) -> StackString {
+        let mut export_filename = StackString::new();
+        if let Some(pub_date) = self.pub_date {
+            export_filename.push_str(&format_sstr!("{}", pub_date.date()));
+        }
+        export_filename.push_str(&format_sstr!("_{}.mp3", self.title.replace(" ", "_")));
+        export_filename
+    }
+
     /// # Errors
     /// Return error if db query fails
     pub async fn from_index(pool: &PgPool, cid: i32, eid: i32) -> Result<Option<Self>, Error> {
@@ -327,7 +336,7 @@ mod tests {
         let config = Config::init_config()?;
         let pool = PgPool::new(&config.database_url)?;
 
-        let eps = Episode::get_all_episodes(&pool, 1).await?;
+        let eps = Episode::get_all_episodes(&pool, 19).await?;
 
         assert!(eps.len() > 100);
 

@@ -1,0 +1,1 @@
+ALTER TABLE podcasts ADD COLUMN export_directory TEXT;

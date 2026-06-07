@@ -13,6 +13,7 @@ pub struct Podcast {
     pub castname: StackString,
     pub feedurl: StackString,
     pub directory: Option<StackString>,
+    pub export_directory: Option<StackString>,
 }
 
 impl Podcast {
@@ -35,6 +36,7 @@ impl Podcast {
                 castname: cname.into(),
                 feedurl: furl.as_str().into(),
                 directory: Some(dir.into()),
+                export_directory: None,
             };
             let episodes = PodConnection::new()
                 .parse_feed(&pod, &HashMap::new(), 0)
@@ -42,13 +44,14 @@ impl Podcast {
             assert!(!episodes.is_empty());
             let query = query!(
                 r#"
-                    INSERT INTO podcasts (castid, castname, feedurl, directory)
-                    VALUES ($castid,$castname,$feedurl,$directory)
+                    INSERT INTO podcasts (castid, castname, feedurl, directory, export_directory)
+                    VALUES ($castid,$castname,$feedurl,$directory,$export_directory)
                 "#,
                 castid = pod.castid,
                 castname = pod.castname,
                 feedurl = pod.feedurl,
-                directory = pod.directory
+                directory = pod.directory,
+                export_directory = pod.export_directory
             );
             let conn = pool.get().await?;
             query.fetch_one(&conn).await?
@@ -62,7 +65,7 @@ impl Podcast {
         let query = query!(
             r#"
                 SELECT
-                    castid, castname, feedurl, directory
+                    castid, castname, feedurl, directory, export_directory
                 FROM podcasts
                 WHERE castid = $castid
             "#,
@@ -78,7 +81,7 @@ impl Podcast {
         let query = query!(
             r#"
                 SELECT
-                    castid, castname, feedurl, directory
+                    castid, castname, feedurl, directory, export_directory
                 FROM podcasts
                 WHERE feedurl = $feedurl
             "#,
@@ -96,7 +99,7 @@ impl Podcast {
         let query = query!(
             r#"
             SELECT
-                castid, castname, feedurl, directory
+                castid, castname, feedurl, directory, export_directory
             FROM podcasts
         "#
         );
@@ -121,8 +124,10 @@ impl Podcast {
 mod tests {
     use anyhow::Error;
     use log::debug;
+    use stack_string::format_sstr;
+    use std::path::Path;
 
-    use crate::{config::Config, pgpool::PgPool, podcast::Podcast};
+    use crate::{config::Config, episode::Episode, pgpool::PgPool, podcast::Podcast};
 
     #[tokio::test]
     #[ignore]
@@ -149,13 +154,45 @@ mod tests {
         let pool = PgPool::new(&config.database_url)?;
         let p = Podcast::from_feedurl(
             &pool,
-            "http://feeds.nightvalepresents.com/welcometonightvalepodcast",
+            "https://feed.podbean.com/flatpackhistorysweden/feed.xml",
         )
         .await?
         .unwrap();
         debug!("{:?}", p);
-        assert_eq!(p.castid, 24);
-        assert_eq!(&p.castname, "Welcome to Night Vale");
+        assert_eq!(p.castid, 28);
+        assert_eq!(&p.castname, "A Flatpack History of Sweden");
+        assert_eq!(
+            p.export_directory,
+            Some(format_sstr!(
+                "/home/ddboline/Workspace/backup/Documents/mp3/flatpack_history_of_sweden"
+            ))
+        );
+        let directory = p.directory.unwrap();
+        let directory = Path::new(&directory);
+        assert!(directory.exists());
+        let export_directory = p.export_directory.unwrap();
+        let export_directory = Path::new(&export_directory);
+        assert!(export_directory.exists());
+        let mut outfiles = Vec::new();
+        let mut export_files = Vec::new();
+        for ep in Episode::get_all_episodes(&pool, p.castid).await? {
+            let outfile = directory.join(ep.url_basename()?.as_str());
+            let export_file = export_directory.join(ep.export_filename());
+            println!(
+                "{} {} {} {}",
+                outfile.display(),
+                outfile.exists(),
+                export_file.display(),
+                export_file.exists()
+            );
+            if outfile.exists() {
+                outfiles.push(outfile);
+            }
+            if export_file.exists() {
+                export_files.push(export_file);
+            }
+        }
+        assert_eq!(outfiles.len(), export_files.len());
         Ok(())
     }
 }

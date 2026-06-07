@@ -244,6 +244,26 @@ async fn process_all_podcasts(
             }
             stdout.send(format_sstr!("update metadata {} {}", epi.castid, epi.epurl));
         }
+        if let Some((directory, export_directory)) = pod
+            .directory
+            .as_ref()
+            .and_then(|d| pod.export_directory.as_ref().map(|e| (d, e)))
+        {
+            let directory_path = Path::new(&directory);
+            let export_directory_path = Path::new(&export_directory);
+            if directory_path.exists() && export_directory_path.exists() {
+                for epi in Episode::get_all_episodes(pool, pod.castid).await? {
+                    if epi.status == EpisodeStatus::Downloaded {
+                        let outfile = directory_path.join(&epi.url_basename()?);
+                        let export_file = export_directory_path.join(&epi.export_filename());
+                        if outfile.exists() && !export_file.exists() {
+                            println!("copy {} to {}", outfile.display(), export_file.display());
+                            tokio::fs::copy(&outfile, &export_file).await?;
+                        }
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }
