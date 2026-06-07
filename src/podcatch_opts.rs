@@ -255,7 +255,7 @@ async fn process_all_podcasts(
                 for epi in Episode::get_all_episodes(pool, pod.castid).await? {
                     if epi.status == EpisodeStatus::Downloaded {
                         let outfile = directory_path.join(&epi.url_basename()?);
-                        let export_file = export_directory_path.join(&epi.export_filename());
+                        let export_file = export_directory_path.join(epi.export_filename());
                         if outfile.exists() && !export_file.exists() {
                             println!("copy {} to {}", outfile.display(), export_file.display());
                             tokio::fs::copy(&outfile, &export_file).await?;

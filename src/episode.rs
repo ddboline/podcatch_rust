@@ -93,12 +93,13 @@ impl Episode {
         }
     }
 
+    #[must_use] 
     pub fn export_filename(&self) -> StackString {
         let mut export_filename = StackString::new();
         if let Some(pub_date) = self.pub_date {
             export_filename.push_str(&format_sstr!("{}", pub_date.date()));
         }
-        export_filename.push_str(&format_sstr!("_{}.mp3", self.title.replace(" ", "_")));
+        export_filename.push_str(&format_sstr!("_{}.mp3", self.title.replace(' ', "_")));
         export_filename
     }
 
